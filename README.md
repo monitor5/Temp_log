@@ -4,18 +4,37 @@
 
 기존 `sspark_portpolio`는 검토 대상으로만 사용했습니다. 인증·댓글·업로드 API, React 앱, MongoDB, 샘플 실적/학교 브랜딩, 외부 폰트를 복사하지 않았습니다. 원본은 변경하지 않았습니다.
 
+[기술 스택·Docker·Kubernetes 구조도](docs/ARCHITECTURE.md)
+
 ## 바로 실행
 
-Docker Desktop/Engine + Compose, Python 3가 필요합니다. 실행 시 약 2~3GB 여유 메모리를 권장합니다.
+Docker Desktop/Engine + Compose, Python 3, Make가 필요합니다. 먼저 Docker 엔진을 실행합니다. 실행 시 약 2~3GB 여유 메모리를 권장합니다.
 
 ```sh
-python3 scripts/init-local.py
-docker compose up --build -d --wait
+make up
 ```
+
+기존 `.env`의 비밀번호를 유지하며, 파일이 없을 때만 생성합니다. 이미지 빌드와 서비스 healthy 확인까지 한 번에 수행합니다. Make가 없으면 `python3 scripts/init-local.py`를 최초 한 번 실행한 뒤 `docker compose up --build -d --wait --wait-timeout 240`으로 실행할 수 있습니다.
 
 - 블로그: <http://localhost:2368>
 - 관리자: <http://localhost:2368/ghost/>
 - 로컬 인증 메일함: <http://localhost:8025> (Mailpit, 실제 이메일을 외부로 보내지 않습니다.)
+
+```sh
+make status  # 실행 상태와 포트
+make logs    # 최근 로그
+make down    # 컨테이너 종료, 글·업로드·DB 볼륨 유지
+make backup  # SQL과 업로드를 함께 백업
+```
+
+```mermaid
+flowchart LR
+    browser["브라우저"] -->|"localhost:2368"| ghost["Ghost · 웹 관리자 + 블로그"]
+    ghost -->|"내부 SQL"| mysql["MySQL 8.4"]
+    ghost --> content[("이미지·파일 볼륨")]
+    mysql --> data[("DB 볼륨")]
+    ghost -->|"SMTP"| mailpit["Mailpit · 로컬 메일함"]
+```
 
 처음 관리자 화면에서 **본인 이메일과 새 비밀번호로 소유자 계정을 생성**합니다. 기본 관리자 계정이나 공용 비밀번호는 없습니다. Compose의 포트는 `127.0.0.1`에만 열립니다.
 

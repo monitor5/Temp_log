@@ -32,3 +32,17 @@
 - 외부 침투 테스트, 완전한 공급망 감사, 타인이 만든 콘텐츠의 권리 증명
 
 관리자 업로드 파일은 URL을 아는 사람이 읽을 수 있다. 초안 본문 비공개 테스트를 파일 접근 제어 보장으로 해석하지 않는다. 기존 저장소에 실제 DB/media export가 없어서 사용자 콘텐츠는 이관하지 않았다. 실제 배포는 도메인·클러스터·SMTP가 정해진 뒤 운영 문서대로 진행해야 한다.
+
+
+## Docker 실행 구성 보완 검증
+
+같은 날짜에 `temp-log-wrap-smoke`라는 별도 Compose 프로젝트로 아래 변경을 검증했다.
+
+- `make up`으로 두 이미지 빌드와 3개 서비스 healthy 확인, 기존 `.env` 보존.
+- Ghost는 app/database 두 네트워크, MySQL은 internal database만, Mailpit은 app만 연결됨을 확인. DB host port 바인딩 없음.
+- 이미지에 내장된 healthcheck가 Compose에 상속됨을 확인하고 DB 중단 시 종료 코드 1 확인.
+- init 프로세스, PID 제한, 서비스별 local 로그 순환, 읽기 전용 root와 capability 제거 확인.
+- 관리자 등록/로그인·게시·초안 비공개·이미지/파일 업로드 후 컨테이너 전체 재생성, 세션과 콘텐츠 보존 통과.
+- README와 아키텍처 문서의 Mermaid 4개를 실제 렌더러로 파싱·렌더링 확인.
+
+이는 로컬 컨테이너와 문서 검증이다. Kubernetes는 변경한 종료 유예 시간(90초)을 포함해 Kustomize 렌더를 확인했으며, 운영 클러스터에 새로 적용하지 않았다.

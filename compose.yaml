@@ -1,5 +1,10 @@
 # Local preview only. Internet production uses k8s + HTTPS + real SMTP.
 name: temp-log
+x-logging: &bounded-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
 services:
   ghost:
     image: temp-log:local
@@ -9,6 +14,10 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
+    init: true
+    pids_limit: 256
+    logging: *bounded-logging
+    networks: [app, database]
     ports:
       - "127.0.0.1:${GHOST_PORT:-2368}:2368"
     environment:
@@ -39,14 +48,14 @@ services:
       mailpit:
         condition: service_started
     healthcheck:
-      test: [CMD, node, -e, "require('http').get({host:'127.0.0.1',port:2368,path:'/',headers:{'X-Forwarded-Proto':'https'}},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      # Inherit the probe from the image, so standalone Docker has it too.
       interval: 10s
       timeout: 5s
       start_period: 120s
       retries: 12
     mem_limit: 1g
     cpus: 1.0
-    stop_grace_period: 40s
+    stop_grace_period: 90s
   db:
     image: temp-log-db:local
     build:
@@ -57,6 +66,9 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
+    pids_limit: 256
+    logging: *bounded-logging
+    networks: [database]
     command: [--mysqlx=0, --secure-file-priv=NULL, --innodb-buffer-pool-size=128M]
     environment:
       MYSQL_DATABASE: ghost
@@ -85,6 +97,10 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    pids_limit: 128
+    logging: *bounded-logging
+    networks: [app]
     environment:
       MP_DATABASE: /tmp/mailpit.db
     ports:
@@ -96,3 +112,8 @@ services:
 volumes:
   ghost-content:
   mysql-data:
+networks:
+  app:
+  database:
+    # Only Ghost and MySQL share this network. No DB internet route or host port.
+    internal: true

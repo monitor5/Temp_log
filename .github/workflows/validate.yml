@@ -23,9 +23,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Generate local test credentials
-        run: python3 scripts/init-local.py
+        run: make init
       - name: Build both runtime images
-        run: docker compose build
+        run: make build
       - name: Install checksum-verified Trivy
         run: |
           curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-64bit.tar.gz -o /tmp/trivy.tar.gz

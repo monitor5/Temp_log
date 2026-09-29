@@ -10,7 +10,10 @@ LABEL org.opencontainers.image.title="Temp_log" \
       org.opencontainers.image.source="https://github.com/monitor5/Temp_log" \
       org.opencontainers.image.description="Personal Ghost blog with a minimal original theme"
 COPY --chown=node:node theme/ /opt/temp-log/theme/
+COPY docker/healthcheck.cjs /opt/temp-log/healthcheck.cjs
 COPY --chmod=755 docker/start.sh /usr/local/bin/temp-log-start
 USER 1000:1000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
+    CMD ["node", "/opt/temp-log/healthcheck.cjs"]
 ENTRYPOINT ["temp-log-start"]
 CMD ["node", "current/index.js"]
