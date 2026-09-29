@@ -11,8 +11,8 @@ restart_mongo=false
 cleanup() {
     task_status=$?
     trap - EXIT HUP INT TERM
-    if [ "$restart_mongo" = true ]; then docker compose start --wait --wait-timeout 120 mongo >/dev/null || task_status=1; fi
-    if [ "$restart_app" = true ]; then docker compose start --wait --wait-timeout 120 app >/dev/null || task_status=1; fi
+    if [ "$restart_mongo" = true ]; then docker compose up -d --no-deps --no-recreate --wait --wait-timeout 120 mongo >/dev/null || task_status=1; fi
+    if [ "$restart_app" = true ]; then docker compose up -d --no-deps --no-recreate --wait --wait-timeout 120 app >/dev/null || task_status=1; fi
     rmdir "$lock_dir"
     exit "$task_status"
 }

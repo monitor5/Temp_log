@@ -452,7 +452,7 @@ test('22 real database outage shows retry UI and recovers without data loss', as
     expect((await api(page,'/health/live')).status).toBe(200);
     expect((await api(page,'/health/ready')).status).toBe(503);
   } finally {
-    const started=spawnSync('docker',['compose','-p',credentials.project,'start','--wait','--wait-timeout','90','mongo'],{encoding:'utf8'});expect(started.status).toBe(0);
+    const started=spawnSync('docker',['compose','-p',credentials.project,'up','-d','--no-deps','--no-recreate','--wait','--wait-timeout','90','mongo'],{encoding:'utf8'});expect(started.status, started.stderr).toBe(0);
   }
   await page.getByRole('button',{name:'다시 시도'}).click();
   await expect(page.getByRole('heading',{name:'Browse',exact:true})).toBeVisible();
