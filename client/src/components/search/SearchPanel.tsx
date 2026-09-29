@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -127,7 +128,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     maxLength={200}
                     value={localQuery}
                     onChange={(e) => setLocalQuery(e.target.value)}
-                    placeholder="search table."
+                    placeholder="찾고 싶은 글을 검색하세요"
                     className="w-full pl-12 pr-4 py-4 bg-surface-dark border border-border text-lg
                              placeholder:text-muted focus:outline-none focus:border-primary transition-colors"
                   />
@@ -137,7 +138,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                 <div className="flex flex-wrap items-center gap-6">
                   {/* 타입 필터 */}
                   <div className="flex items-center gap-3">
-                    <span className="text-caption text-muted uppercase">Type</span>
+                    <span className="text-caption text-muted uppercase">분류</span>
                     <div className="flex gap-2">
                       {(['all', 'project', 'essay'] as const).map((t) => (
                         <button
@@ -151,7 +152,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                               : 'bg-surface-dark text-secondary hover:bg-border'
                           }`}
                         >
-                          {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
+                          {t === 'all' ? '전체' : postTypeLabels[t]}
                         </button>
                       ))}
                     </div>

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion';
-import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { postsApi } from '@/lib/api';
 import { HeroCard } from '@/components/cards/HeroCard';
@@ -20,10 +20,6 @@ export function Home() {
   const activeIndex = posts.length ? currentHeroIndex % posts.length : 0;
   const heroPost = posts[activeIndex];
   const sidePosts = posts.filter((_, i) => i !== activeIndex).slice(0, 3);
-
-  // Intersection Observer for slide-in effect
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const bottomInView = useInView(bottomRef, { once: false, amount: 0.1 });
 
   // Auto-rotate hero cards
   useEffect(() => {
@@ -61,6 +57,10 @@ export function Home() {
       {/* 메인 콘텐츠 영역 */}
       <div className="py-8 lg:py-12">
         <div className="container-narrow">
+          <header className="mb-8 lg:mb-10">
+            <h1 className="font-serif text-heading lg:text-display-sm mb-3">하루의 기록, 작은 생각들.</h1>
+            <p className="text-secondary">일상과 생각, 좋아하는 것들을 가볍게 남깁니다.</p>
+          </header>
           {/* 메인 그리드 - 히어로 + 사이드 */}
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 lg:gap-10">
             {/* 메인 시네마 카드 */}
@@ -110,10 +110,10 @@ export function Home() {
               <div className="sticky top-28 space-y-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-caption text-muted uppercase tracking-widest">
-                    Recent Stories
+                    다른 글
                   </h3>
                   <span className="text-caption text-muted">
-                    {posts.length} works
+                    {sidePosts.length}개
                   </span>
                 </div>
                 
@@ -137,61 +137,22 @@ export function Home() {
                     </motion.div>
                   ))
                 ) : (
-                  <p className="text-sm text-muted">더 많은 스토리가 곧 추가됩니다</p>
+                  <p className="text-sm text-muted">다음 기록을 준비하고 있습니다.</p>
                 )}
               </div>
             </aside>
           </div>
 
-          {/* 하단 슬라이드 안내 영역 */}
-          <motion.div
-            ref={bottomRef}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: bottomInView ? 1 : 0.3 }}
-            transition={{ duration: 0.6 }}
-            className="mt-16 lg:mt-20"
-          >
-            {/* Extendable 캡션 */}
-            <div className="text-center mb-8">
-              <p className="text-caption text-muted italic tracking-wide">extendable.</p>
-            </div>
-
-            {/* 스크롤 인디케이터 */}
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 2,
-                ease: 'easeInOut'
-              }}
-              className="flex flex-col items-center"
-            >
-              <div className="w-px h-12 bg-gradient-to-b from-border to-transparent" />
-              <svg
-                className="w-5 h-5 text-muted mt-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1}
-                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                />
-              </svg>
-            </motion.div>
-          </motion.div>
         </div>
 
         {/* 모바일용 사이드 스토리 */}
         <div className="lg:hidden mt-12 px-4">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-caption text-muted uppercase tracking-widest">
-              Recent Stories
+              다른 글
             </h3>
             <span className="text-caption text-muted">
-              {sidePosts.length} more
+              {sidePosts.length}개
             </span>
           </div>
           <div className="space-y-4">

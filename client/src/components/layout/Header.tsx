@@ -5,10 +5,10 @@ import { Menu, X, Search } from 'lucide-react';
 import { SearchPanel } from '../search/SearchPanel';
 
 const navItems = [
-  { label: 'Project', path: '/gallery?type=project' },
-  { label: 'Story', path: '/gallery?type=essay' },
-  { label: 'Contact', path: '/contact' },
-  { label: 'Browse', path: '/gallery' },
+  { label: '전체 글', path: '/gallery' },
+  { label: '일상', path: '/gallery?type=project' },
+  { label: '생각', path: '/gallery?type=essay' },
+  { label: '블로그 소개', path: '/about' },
 ];
 
 export function Header() {

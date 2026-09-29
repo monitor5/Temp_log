@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -140,7 +141,7 @@ export function AdminDashboard() {
                     <div className="min-w-0 max-w-full">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs uppercase tracking-wide text-muted">
-                          {post.type}
+                          {postTypeLabels[post.type]}
                         </span>
                         {post.isFeatured && (
                           <Star className="w-4 h-4 text-accent-ink fill-accent-ink" />

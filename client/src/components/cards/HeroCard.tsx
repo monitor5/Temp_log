@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -54,7 +55,7 @@ export function HeroCard({ post, hasPagination = false }: HeroCardProps) {
         {/* 상단 라벨 */}
         <div className="absolute top-3 left-3 right-3 sm:top-6 sm:left-6 sm:right-6 flex items-center justify-between gap-2">
           <span className="text-caption text-surface bg-black/70 px-2 py-1 uppercase tracking-widest">
-            {post.type}
+            {postTypeLabels[post.type]}
           </span>
           <span className="text-caption text-surface bg-black/70 px-2 py-1 whitespace-nowrap">
             {formattedDate}
@@ -96,7 +97,7 @@ export function HeroCard({ post, hasPagination = false }: HeroCardProps) {
               </p>
             )}
             <div className="mt-4 inline-flex items-center gap-2 text-surface font-medium">
-              <span>View Project</span>
+              <span>글 읽기</span>
               <svg
                 className="w-4 h-4 group-hover:translate-x-1 transition-transform"
                 fill="none"

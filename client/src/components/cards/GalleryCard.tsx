@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { Post } from '@/lib/api';
@@ -46,7 +47,7 @@ export function GalleryCard({ post }: GalleryCardProps) {
             whileHover={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <span className="text-surface font-medium">View →</span>
+            <span className="text-surface font-medium">글 읽기 →</span>
           </motion.div>
         </div>
 
@@ -54,7 +55,7 @@ export function GalleryCard({ post }: GalleryCardProps) {
         <div className="p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-caption text-muted uppercase tracking-wide">
-              {post.type}
+              {postTypeLabels[post.type]}
             </span>
             <span className="text-caption text-muted">{formattedDate}</span>
           </div>

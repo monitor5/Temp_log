@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useBlocker, Link } from 'react-router-dom';
@@ -244,12 +245,12 @@ function EditorDocument({ id }: { id?: string }) {
               <div className="bg-surface p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="editor-type" className="block text-sm font-medium mb-2">타입</label>
+                    <label htmlFor="editor-type" className="block text-sm font-medium mb-2">분류</label>
                     <select id="editor-type" value={formData.type}
                       onChange={event => setFormData({ ...formData, type: event.target.value as 'project' | 'essay' })}
                       className="input-field">
-                      <option value="project">Project</option>
-                      <option value="essay">Essay</option>
+                      <option value="project">{postTypeLabels.project}</option>
+                      <option value="essay">{postTypeLabels.essay}</option>
                     </select>
                   </div>
                   <div>

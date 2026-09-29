@@ -1,7 +1,7 @@
 {
   "name": "temp-log-server",
   "version": "1.0.0",
-  "description": "Temp-Log Backend API - Local MERN Portfolio Platform",
+  "description": "Temp-Log Backend API - Personal Blog",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -11,8 +11,8 @@
     "test": "tsx --test test/*.test.ts"
   },
   "keywords": [
-    "portfolio",
-    "architecture",
+    "blog",
+    "personal",
     "mern"
   ],
   "author": "",

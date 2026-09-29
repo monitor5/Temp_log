@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -64,11 +65,7 @@ export function Gallery() {
     640: 1,
   };
 
-  const title = type
-    ? type === 'project'
-      ? 'Projects'
-      : 'Stories'
-    : 'Browse';
+  const title = type ? postTypeLabels[type] : '전체 글';
 
   return (
     <div className="container-narrow py-12">
@@ -88,9 +85,9 @@ export function Gallery() {
           <p className="text-secondary">
             {type
               ? type === 'project'
-                ? '건축 프로젝트 아카이브'
-                : '에세이 및 글 모음'
-              : '모든 작업물 둘러보기'}
+                ? '소소한 일상과 경험을 담은 기록'
+                : '떠오른 생각과 관심사를 담은 글'
+              : '일상과 생각을 차곡차곡 모았습니다.'}
           </p>
         )}
       </motion.header>
@@ -142,7 +139,7 @@ export function Gallery() {
           ))}
         </Masonry>
       )}
-      {data && !error && !beyondLastPage && data.pagination.totalPages > 1 && <nav aria-label="갤러리 페이지" className="flex justify-center gap-6 mt-8">
+      {data && !error && !beyondLastPage && data.pagination.totalPages > 1 && <nav aria-label="글 목록 페이지" className="flex justify-center gap-6 mt-8">
         <button disabled={page <= 1} onClick={() => {const next = new URLSearchParams(searchParams); next.set('page', String(page - 1)); setSearchParams(next);}} className="disabled:opacity-30">이전</button>
         <span>{page} / {data.pagination.totalPages}</span>
         <button disabled={page >= data.pagination.totalPages} onClick={() => {const next = new URLSearchParams(searchParams); next.set('page', String(page + 1)); setSearchParams(next);}} className="disabled:opacity-30">다음</button>

@@ -1,12 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, lazy, Suspense } from 'react';
 import { useAuthStore } from './store/authStore';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { Home } from './pages/Home';
 const PostDetail = lazy(() => import('./pages/PostDetail').then(module => ({default: module.PostDetail})));
 import { Gallery } from './pages/Gallery';
-import { Contact } from './pages/Contact';
+import { About } from './pages/About';
+import { Terms } from './pages/Terms';
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin').then(module => ({default: module.AdminLogin})));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(module => ({default: module.AdminDashboard})));
 const AdminEditor = lazy(() => import('./pages/admin/AdminEditor').then(module => ({default: module.AdminEditor})));
@@ -36,7 +37,9 @@ function App() {
         <Route path="project/:slug" element={<PostDetail />} />
         <Route path="story/:slug" element={<PostDetail />} />
         <Route path="gallery" element={<Gallery />} />
-        <Route path="contact" element={<Contact />} />
+        <Route path="about" element={<About />} />
+        <Route path="contact" element={<Navigate to="/about" replace />} />
+        <Route path="terms" element={<Terms />} />
         <Route path="*" element={<section className="container-narrow py-20 text-center"><h1 className="text-display-sm mb-4">페이지를 찾을 수 없습니다</h1><p className="mb-6">주소가 변경되었거나 존재하지 않는 페이지입니다.</p><Link to="/" className="btn-primary">홈으로 돌아가기</Link></section>} />
       </Route>
       

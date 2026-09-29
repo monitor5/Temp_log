@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -55,7 +56,7 @@ export function InlineSearchBar() {
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
-            placeholder="search table."
+            placeholder="찾고 싶은 글을 검색하세요"
             className="w-full pl-11 pr-10 py-3 bg-surface border border-border text-primary
                      placeholder:text-muted placeholder:italic placeholder:tracking-wide
                      focus:outline-none focus:border-primary/50 transition-all duration-200"
@@ -117,14 +118,14 @@ export function InlineSearchBar() {
           >
             <div className="pt-4 flex flex-wrap items-center gap-6">
               {/* 타입 필터 */}
-              <FilterGroup label="Type">
+              <FilterGroup label="분류">
                 {(['all', 'project', 'essay'] as const).map((t) => (
                   <FilterButton
                     key={t}
                     active={type === t}
                     onClick={() => setType(t)}
                   >
-                    {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
+                    {t === 'all' ? '전체' : postTypeLabels[t]}
                   </FilterButton>
                 ))}
               </FilterGroup>

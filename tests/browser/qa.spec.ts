@@ -81,7 +81,7 @@ test.afterEach(async ({}, info) => { if (info.status !== info.expectedStatus) aw
 test.afterAll(async () => { await owner?.close(); });
 
 test('01 branding, public navigation and real empty states', async ({page}) => {
-  for (const url of ['/', '/gallery', '/gallery?type=project', '/gallery?type=essay', '/contact']) {
+  for (const url of ['/', '/gallery', '/gallery?type=project', '/gallery?type=essay', '/about', '/contact', '/terms']) {
     await page.goto(baseURL + url);
     await expect(page).toHaveTitle('Temp-Log');
     await expect(page.getByRole('link', {name: 'Temp-Log', exact: true})).toBeVisible();
@@ -253,11 +253,11 @@ test('10 search URL synchronization, filtering, Escape and focus return', async 
 test('11 gallery/admin pagination and invalid URL recovery', async ({page}) => {
   for(let i=0;i<25;i++) expect((await api(admin,'/api/posts','POST',{title:'QA pagination '+String(i).padStart(2,'0'),content:'page fixture',isHidden:false})).status).toBe(201);
   await page.goto(baseURL+'/gallery?page=999');
-  await expect(page).toHaveURL(/page=2/);await expect(page.getByRole('navigation',{name:'갤러리 페이지'})).toBeVisible();
-  await page.getByRole('navigation',{name:'갤러리 페이지'}).getByRole('button',{name:'이전'}).click();
+  await expect(page).toHaveURL(/page=2/);await expect(page.getByRole('navigation',{name:'글 목록 페이지'})).toBeVisible();
+  await page.getByRole('navigation',{name:'글 목록 페이지'}).getByRole('button',{name:'이전'}).click();
   await expect(page).toHaveURL(/page=1/);
   await page.goto(baseURL+'/gallery?page=1.5&type=bad&sort=bad&order=bad');
-  await expect(page.getByRole('heading',{name:'Browse',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'전체 글',exact:true})).toBeVisible();
   await expect(page.locator('body')).not.toContainText('콘텐츠를 불러오는데 실패');
   await admin.goto(baseURL+'/admin/dashboard');
   await admin.getByRole('navigation',{name:'게시글 페이지'}).getByRole('button',{name:'다음'}).click();
@@ -342,10 +342,10 @@ test('15 browser security probes reject injection, malformed writes and unsafe e
   expect((await api(admin,'/api/posts/'+post._id,'PATCH',{content:'# Safe heading\n\nRestored QA content'})).status).toBe(200);
 });
 
-test('16 mobile navigation, long content, keyboard and contact states', async ({page}) => {
+test('16 mobile navigation, long content, keyboard and blog information', async ({page}) => {
   await page.setViewportSize({width:390,height:844});
   await page.goto(baseURL+'/');await expect(page.getByRole('link',{name:'Temp-Log',exact:true})).toBeVisible();
-  const menu=page.getByRole('button',{name:/메뉴/});await menu.click();await page.getByRole('link',{name:'Project',exact:true}).click();
+  const menu=page.getByRole('button',{name:/메뉴/});await menu.click();await page.getByRole('link',{name:'일상',exact:true}).click();
   await expect(page).toHaveURL(/type=project/);
   const brightImage=await admin.evaluate(async bytes=>{const data=new FormData();data.append('file',new Blob([new Uint8Array(bytes)],{type:'image/png'}),'bright.png');const response=await fetch('/api/upload',{method:'POST',headers:{'X-Requested-With':'TempLog'},body:data});return {status:response.status,body:await response.json()};},Array.from(png(255,255,255)));
   expect(brightImage.status).toBe(201);
@@ -371,7 +371,8 @@ test('16 mobile navigation, long content, keyboard and contact states', async ({
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await visuallyReady(page.locator('.prose'));
   await page.screenshot({path:screenshotDir+'/mobile.png',fullPage:true});
-  await page.goto(baseURL+'/contact');await expect(page.getByRole('button',{name:'연락처 등록 후 문의 가능'})).toBeDisabled();
+  await page.goto(baseURL+'/contact');await expect(page).toHaveURL(baseURL+'/about');await expect(page.getByRole('heading',{name:'블로그 소개'})).toBeVisible();
+  await page.getByRole('link',{name:'이용약관',exact:true}).click();await expect(page.getByRole('main')).toHaveText('이용약관');
   await page.goto(baseURL+'/');await page.setViewportSize({width:1440,height:1000});await visuallyReady(page.getByRole('heading',{name:title,exact:true}));await visuallyReady(page.getByRole('textbox',{name:'검색어'}));await page.screenshot({path:screenshotDir+'/desktop.png',fullPage:true});
 });
 
@@ -455,7 +456,7 @@ test('22 real database outage shows retry UI and recovers without data loss', as
     const started=spawnSync('docker',['compose','-p',credentials.project,'up','-d','--no-deps','--no-recreate','--wait','--wait-timeout','90','mongo'],{encoding:'utf8'});expect(started.status, started.stderr).toBe(0);
   }
   await page.getByRole('button',{name:'다시 시도'}).click();
-  await expect(page.getByRole('heading',{name:'Browse',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'전체 글',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'다시 시도'})).toHaveCount(0);
 });
 

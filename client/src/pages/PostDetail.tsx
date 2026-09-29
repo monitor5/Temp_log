@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { useState } from 'react';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { Link, useParams } from 'react-router-dom';
@@ -74,7 +75,7 @@ export function PostDetail() {
           transition={{ delay: 0.1 }}
         >
           <span className="text-caption text-muted uppercase tracking-widest">
-            {post.type}
+            {postTypeLabels[post.type]}
           </span>
           <h1 className="font-serif text-display-sm lg:text-display mt-2 mb-4 text-balance">
             {post.title}

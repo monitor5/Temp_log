@@ -1,3 +1,4 @@
+import { postTypeLabels } from '@/lib/postTypes';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { Post } from '@/lib/api';
@@ -70,7 +71,7 @@ export function SideStoryCard({ post, compact }: SideStoryCardProps) {
               {post.title}
             </h4>
             <span className="text-xs text-muted mt-2 inline-block uppercase tracking-wide">
-              {post.type}
+              {postTypeLabels[post.type]}
             </span>
           </div>
         </div>

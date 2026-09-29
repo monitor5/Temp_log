@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // SKKU 건축 미니멀 팔레트
+        // Temp-Log 기본 팔레트
         primary: '#1a1a1a',
         secondary: '#4a4a4a',
         accent: '#c9a227',
