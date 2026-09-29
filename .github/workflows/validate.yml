@@ -4,67 +4,53 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-permissions:
-  contents: read
+permissions: {contents: read}
 concurrency:
   group: validate-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  blog:
+  original-app:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
-      GHOST_URL: http://localhost:2369
-      GHOST_PORT: "2369"
-      MAILPIT_PORT: "8026"
-      COMPOSE_PROJECT_NAME: temp-log-ci
+      APP_PORT: '8081'
+      PUBLIC_URL: http://localhost:8081
+      COMPOSE_PROJECT_NAME: temp-log-test-ci
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          persist-credentials: false
-      - name: Generate local test credentials
-        run: make init
-      - name: Build both runtime images
-        run: make build
-      - name: Install checksum-verified Trivy
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '24.21.0'}
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=moderate
+      - run: npm test
+      - run: make up
+      - run: python3 tests/smoke.py create --project temp-log-test-ci
+      - name: Verify persistence after container recreation
+        run: |
+          docker compose up -d --force-recreate --wait --wait-timeout 240
+          python3 tests/smoke.py verify --project temp-log-test-ci
+      - name: Render Kubernetes manifests
+        run: |
+          kubectl kustomize k8s/base > artifacts/k8s-base.yaml
+          kubectl kustomize k8s/overlays/public-example > artifacts/k8s-public.yaml
+      - name: Install verified Trivy
         run: |
           curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-64bit.tar.gz -o /tmp/trivy.tar.gz
           echo '2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a  /tmp/trivy.tar.gz' | sha256sum -c -
           tar -xzf /tmp/trivy.tar.gz -C /tmp trivy
           sudo install /tmp/trivy /usr/local/bin/trivy
-      - name: Scan images and produce SBOMs
-        run: ./scripts/scan-images.sh
-      - name: Check theme against Ghost 6
-        run: docker run --rm --entrypoint sh temp-log:local -c 'current/node_modules/.bin/gscan /opt/temp-log/theme --v6'
-      - name: Start disposable blog
-        run: docker compose up -d --wait --wait-timeout 240
-      - name: Verify owner, publishing, drafts and uploads
-        run: python3 tests/smoke.py create
-      - name: Recreate containers and verify stored content
-        run: |
-          docker compose up -d --force-recreate --wait --wait-timeout 240
-          python3 tests/smoke.py verify
-      - name: Render Kubernetes resources
-        run: |
-          kubectl kustomize k8s/base > artifacts/k8s-base.yaml
-          kubectl kustomize k8s/overlays/public-example > artifacts/k8s-public.yaml
-      - name: Package theme
-        run: python3 scripts/package-theme.py
-      - name: Collect container logs on failure
-        if: failure()
-        run: docker compose logs --tail=80
-      - name: Stop disposable blog
-        if: always()
+      - run: ./scripts/scan-images.sh
+      - if: failure()
+        run: docker compose logs --tail=60
+      - if: always()
         run: docker compose down -v
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: success()
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: theme-and-kubernetes
-          # Never upload smoke credentials or cookies.
+          name: validation-reports
           path: |
-            artifacts/temp-log.zip
-            artifacts/k8s-base.yaml
-            artifacts/k8s-public.yaml
             artifacts/*-trivy.json
             artifacts/*-sbom.json
+            artifacts/k8s-*.yaml
           retention-days: 7

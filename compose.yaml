@@ -1,119 +1,72 @@
-# Local preview only. Internet production uses k8s + HTTPS + real SMTP.
-name: temp-log
-x-logging: &bounded-logging
+name: temp-log-original
+x-logging: &logging
   driver: local
-  options:
-    max-size: "10m"
-    max-file: "3"
+  options: {max-size: '10m', max-file: '3'}
 services:
-  ghost:
-    image: temp-log:local
+  app:
+    image: temp-log-original:local
     build: .
-    user: "1000:1000"
+    user: '1000:1000'
+    init: true
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
-    init: true
-    pids_limit: 256
-    logging: *bounded-logging
-    networks: [app, database]
-    ports:
-      - "127.0.0.1:${GHOST_PORT:-2368}:2368"
+    ports: ['127.0.0.1:${APP_PORT:-8080}:4000']
     environment:
       NODE_ENV: production
-      url: ${GHOST_URL:-http://localhost:2368}
-      server__host: 0.0.0.0
-      database__client: mysql
-      database__connection__host: db
-      database__connection__user: ghost
-      database__connection__password: ${MYSQL_PASSWORD:?Run python3 scripts/init-local.py first}
-      database__connection__database: ghost
-      logging__transports: '["stdout"]'
-      privacy__useUpdateCheck: "false"
-      privacy__useGravatar: "false"
-      privacy__useRpcPing: "false"
-      mail__transport: SMTP
-      mail__from: 'Temp_log <noreply@localhost.test>'
-      mail__options__host: mailpit
-      mail__options__port: "1025"
-      mail__options__secure: "false"
-    volumes:
-      - ghost-content:/var/lib/ghost/content
-    tmpfs:
-      - /tmp:uid=1000,gid=1000,mode=1777,size=128m
-    depends_on:
-      db:
-        condition: service_healthy
-      mailpit:
-        condition: service_started
-    healthcheck:
-      # Inherit the probe from the image, so standalone Docker has it too.
-      interval: 10s
-      timeout: 5s
-      start_period: 120s
-      retries: 12
-    mem_limit: 1g
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      SESSION_SECRET: ${SESSION_SECRET:?Run make init}
+      MONGO_URI: mongodb://archlog:${MONGO_APP_PASSWORD:?Run make init}@mongo:27017/archlog?authSource=archlog
+      UPLOAD_DIR: /data/uploads
+      MAX_FILE_SIZE_MB: '25'
+      MAX_UPLOAD_TOTAL_MB: '1024'
+    volumes: [uploads:/data/uploads]
+    tmpfs: ['/tmp:uid=1000,gid=1000,mode=1777,size=256m']
+    networks: [app, database]
+    logging: *logging
+    pids_limit: 256
+    mem_limit: 768m
     cpus: 1.0
-    stop_grace_period: 90s
-  db:
-    image: temp-log-db:local
-    build:
-      context: .
-      dockerfile: Dockerfile.mysql
-    user: "999:999"
+    stop_grace_period: 30s
+    depends_on:
+      mongo: {condition: service_healthy}
+  mongo:
+    image: temp-log-mongo:local
+    build: {context: ., dockerfile: Dockerfile.mongo}
+    user: '999:999'
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
-    pids_limit: 256
-    logging: *bounded-logging
-    networks: [database]
-    command: [--mysqlx=0, --secure-file-priv=NULL, --innodb-buffer-pool-size=128M]
+    command: [mongod, --bind_ip_all, --auth, --wiredTigerCacheSizeGB, '0.25']
     environment:
-      MYSQL_DATABASE: ghost
-      MYSQL_USER: ghost
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Run python3 scripts/init-local.py first}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Run python3 scripts/init-local.py first}
-      MYSQL_ROOT_HOST: localhost
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Run make init}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Run make init}
+      HOME: /tmp
     volumes:
-      - mysql-data:/var/lib/mysql
+      - mongo-data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
+      - ./docker/mongo-health.js:/opt/health.js:ro
     tmpfs:
       - /tmp:uid=999,gid=999,mode=1777,size=128m
-      - /var/run/mysqld:uid=999,gid=999,mode=0755,size=16m
-    healthcheck:
-      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql --user=ghost --host=127.0.0.1 --database=ghost --execute="SELECT 1" >/dev/null']
-      interval: 10s
-      timeout: 5s
-      start_period: 90s
-      retries: 15
+      - /data/configdb:uid=999,gid=999,mode=0750,size=16m
+    networks: [database]
+    logging: *logging
+    pids_limit: 512
     mem_limit: 1g
     cpus: 1.0
     stop_grace_period: 60s
-  mailpit:
-    # Development inbox: mail never goes to an external recipient.
-    image: axllent/mailpit:v1.31.3@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d
-    user: "1000:1000"
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    restart: unless-stopped
-    pids_limit: 128
-    logging: *bounded-logging
-    networks: [app]
-    environment:
-      MP_DATABASE: /tmp/mailpit.db
-    ports:
-      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
-    tmpfs:
-      - /tmp:uid=1000,gid=1000,mode=1777,size=64m
-    mem_limit: 128m
-    cpus: 0.25
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --host, '127.0.0.1', /opt/health.js]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
 volumes:
-  ghost-content:
-  mysql-data:
+  mongo-data:
+  uploads:
 networks:
   app:
-  database:
-    # Only Ghost and MySQL share this network. No DB internet route or host port.
-    internal: true
+  database: {internal: true}

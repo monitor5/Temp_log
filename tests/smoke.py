@@ -1,142 +1,83 @@
 #!/usr/bin/env python3
-"""End-to-end test against a NEW, DISPOSABLE localhost Ghost instance.
-
-Creates its first owner and test posts. Never point this at a real blog.
-Run create, restart both containers, then verify to test PVC persistence.
-"""
-import argparse
-import struct
-import zlib
-import http.cookiejar
-import json
-import os
+"""Exercise a disposable original-app stack, never the user's real app."""
+import argparse, base64, http.cookiejar, json, os, secrets, struct, subprocess, urllib.error, urllib.parse, urllib.request, zlib
 from pathlib import Path
-import secrets
-import urllib.error
-import urllib.parse
-import urllib.request
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('phase',choices=['create','verify'])
+parser.add_argument('--url',default='http://localhost:8081')
+parser.add_argument('--project',default='temp-log-test-local')
+parser.add_argument('--state',default='artifacts/original-smoke.json')
+a=parser.parse_args()
+assert a.project.startswith('temp-log-test-'), 'Use a disposable test project'
+u=urllib.parse.urlsplit(a.url)
+assert u.hostname in ('localhost','127.0.0.1') and u.scheme=='http' and u.port!=8080
+origin=a.url.rstrip('/');statefile=Path(a.state)
+jar=http.cookiejar.LWPCookieJar(str(statefile)+'.cookies')
+client=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('phase', choices=['create', 'verify'])
-parser.add_argument('--url', default='http://localhost:2369')
-parser.add_argument('--state', default='artifacts/smoke-state.json')
-args = parser.parse_args()
-parts = urllib.parse.urlsplit(args.url)
-if parts.hostname not in {'localhost', '127.0.0.1'} or parts.scheme != 'http':
-    raise SystemExit('Smoke tests are restricted to disposable localhost instances.')
-base = args.url.rstrip('/')
-jar = http.cookiejar.CookieJar()
-client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-
-
-def request(path, method='GET', data=None, status=200, authenticated=True, headers=None):
-    opts = {'Origin': base, 'Accept-Version': 'v6.0'}
-    if headers:
-        opts.update(headers)
-    if isinstance(data, dict):
-        data = json.dumps(data).encode()
-        opts['Content-Type'] = 'application/json'
-    req = urllib.request.Request(base + path, data=data, headers=opts, method=method)
-    opener = client if authenticated else urllib.request.build_opener()
+def req(path,method='GET',data=None,status=200,auth=True,headers=None):
+    h={'Origin':origin,'X-Requested-With':'TempLog'}
+    h.update(headers or {})
+    if isinstance(data,dict): data=json.dumps(data).encode();h['Content-Type']='application/json'
+    request=urllib.request.Request(origin+urllib.parse.quote(path,safe='/?=&%:+'),method=method,data=data,headers=h)
     try:
-        with opener.open(req, timeout=30) as response:
-            code, body = response.status, response.read()
-    except urllib.error.HTTPError as error:
-        code, body = error.code, error.read()
-    assert code == status, f'{method} {path}: expected {status}, received {code}'
-    if not body:
-        return None
-    try:
-        return json.loads(body)
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return body
+        with (client if auth else urllib.request.build_opener()).open(request,timeout=15) as r: code,body,head=r.status,r.read(),r.headers
+    except urllib.error.HTTPError as e: code,body,head=e.code,e.read(),e.headers
+    assert code==status,f'{method} {path}: expected {status}, got {code}'
+    try: body=json.loads(body)
+    except (json.JSONDecodeError,UnicodeDecodeError): pass
+    return body,head
 
+def upload(name,data,status=201):
+    boundary='temp-log-'+secrets.token_hex(12)
+    body=(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()+data+f'\r\n--{boundary}--\r\n'.encode()
+    return req('/api/upload','POST',body,status=status,headers={'Content-Type':'multipart/form-data; boundary='+boundary})[0]
 
-def login(state):
-    request('/ghost/api/admin/session/', 'POST', {
-        'username': state['email'], 'password': state['password']}, status=201)
-
-
-state_path = Path(args.state)
-if args.phase == 'create':
-    assert not state_path.exists(), 'Remove the old disposable smoke state before starting a new test.'
-    setup = request('/ghost/api/admin/authentication/setup/')
-    assert not setup['setup'][0]['status'], 'Refusing to modify an already initialized blog.'
-    state = {'email': 'smoke-owner@example.invalid', 'password': secrets.token_urlsafe(40)}
-    request('/ghost/api/admin/authentication/setup/', 'POST', {'setup': [{
-        'name': 'Temp_log Test', 'email': state['email'], 'password': state['password'],
-        'blogTitle': 'Temp_log'}]}, status=201)
-    login(state)
-    request('/ghost/api/admin/themes/temp-log/activate/', 'PUT')
-    request('/ghost/api/admin/settings/', 'PUT', {'settings': [
-        {'key': 'title', 'value': 'Temp_log'},
-        {'key': 'description', 'value': '기록하고, 만들고, 다시 생각하기.'},
-        {'key': 'locale', 'value': 'ko'},
-        {'key': 'members_signup_access', 'value': 'none'},
-        {'key': 'portal_button', 'value': False},
-        {'key': 'comments_enabled', 'value': 'off'}
-    ]})
-    # Anonymous admin mutations must be rejected.
-    request('/ghost/api/admin/posts/', 'POST', {'posts': [{'title': 'forbidden'}]},
-            status=403, authenticated=False)
-    draft = request('/ghost/api/admin/posts/?source=html', 'POST', {'posts': [{
-        'title': '비공개 초안', 'slug': 'private-smoke-draft', 'status': 'draft',
-        'html': '<p>private-draft-sentinel-' + secrets.token_hex(8) + '</p>'
-    }]}, status=201)['posts'][0]
-    request('/private-smoke-draft/', status=404, authenticated=False)
-    home = request('/', authenticated=False).decode()
-    assert '비공개 초안' not in home and 'private-draft-sentinel' not in home
-    # Upload a tiny PNG through the authenticated native image API.
-    def png_chunk(kind, payload):
-        return struct.pack('>I', len(payload)) + kind + payload + struct.pack('>I', zlib.crc32(kind + payload))
-    png = (b'\x89PNG\r\n\x1a\n' + png_chunk(b'IHDR', struct.pack('>IIBBBBB', 2, 2, 8, 2, 0, 0, 0))
-           + png_chunk(b'IDAT', zlib.compress(b'\x00\xc4\x3d\x2f\xc4\x3d\x2f' * 2)) + png_chunk(b'IEND', b''))
-    boundary = 'temp-log-' + secrets.token_hex(16)
-    multipart = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="smoke.png"\r\n'
-                 'Content-Type: image/png\r\n\r\n').encode() + png + f'\r\n--{boundary}--\r\n'.encode()
-    uploaded = request('/ghost/api/admin/images/upload/', 'POST', multipart, status=201,
-                       headers={'Content-Type': 'multipart/form-data; boundary=' + boundary})
-    image_url = uploaded['images'][0]['url']
-    state['image_path'] = urllib.parse.urlsplit(image_url).path
-    post = request('/ghost/api/admin/posts/?source=html', 'POST', {'posts': [{
-        'title': '첫 기록, 작은 시작', 'slug': 'temp-log-smoke', 'status': 'published',
-        'html': '<h2>작업 노트</h2><p>이 글은 작성·업로드·재시작 검증용입니다.</p>'
-                '<figure><img alt="업로드 검증" src="' + image_url + '"></figure>',
-        'tags': [{'name': '기록', 'slug': 'notes'}]
-    }]}, status=201)['posts'][0]
-    state['post_id'], state['draft_id'] = post['id'], draft['id']
-    file_payload = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="note.txt"\r\n'
-                    f'Content-Type: text/plain\r\n\r\nTemp_log attachment test\r\n--{boundary}--\r\n').encode()
-    attached = request('/ghost/api/admin/files/upload/', 'POST', file_payload, status=201,
-                       headers={'Content-Type': 'multipart/form-data; boundary=' + boundary})
-    state['file_path'] = urllib.parse.urlsplit(attached['files'][0]['url']).path
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(state_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, 'w') as output:
-        json.dump(state, output)
+if a.phase=='create':
+    assert not statefile.exists(), 'Use a new state path for a new test database'
+    state={'username':'test-owner','password':secrets.token_urlsafe(36)}
+    req('/api/auth/init','POST',state,status=404,auth=False)
+    req('/api/posts','POST',{'title':'anonymous','content':'blocked'},status=401,auth=False)
+    result=subprocess.run(['docker','compose','-p',a.project,'exec','-T','app','node','dist/cli/admin.js'],input=json.dumps(state),text=True,capture_output=True)
+    assert result.returncode==0,'CLI administrator creation failed (possibly initialized database)'
+    result,head=req('/api/auth/login','POST',state)
+    assert 'token' not in result
+    assert 'HttpOnly' in head['Set-Cookie'] and 'SameSite=Strict' in head['Set-Cookie']
+    req('/api/auth/me')
+    req('/api/posts','POST',{'title':'csrf','content':'blocked'},status=403,headers={'Origin':'https://untrusted.example'})
+    req('/api/posts?page=NaN',status=400)
+    req('/api/posts?sort=%24where',status=400)
+    draft=req('/api/posts','POST',{'title':'비공개 초안','content':'draft-sentinel'},status=201)[0]['data']
+    state['draft']=draft['_id'];assert draft['isHidden'] is True
+    req('/api/posts?includeHidden=true',status=401,auth=False)
+    req('/api/posts/'+draft['slug'],status=404,auth=False)
+    req('/api/comments?postId='+draft['_id'],status=404,auth=False)
+    req('/api/comments','POST',{'postId':draft['_id'],'author':'reader','password':'reader-test-password','content':'blocked'},status=404,auth=False)
+    def chunk(kind,payload): return struct.pack('>I',len(payload))+kind+payload+struct.pack('>I',zlib.crc32(kind+payload))
+    png=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',2,2,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(b'\x00\xc4\x3d\x2f\xc4\x3d\x2f'*2))+chunk(b'IEND',b'')
+    image=upload('sample.png',png)['data'];state['image']=image['url']
+    upload('fake.png',b'<script>alert(1)</script>',400)
+    upload('bad.svg',b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',400)
+    pdf=upload('document.pdf',b'%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF')['data'];state['file']=pdf['url']
+    _,head=req(state['file'],auth=False);assert head['Content-Disposition'].startswith('attachment;')
+    public=req('/api/posts','POST',{'type':'project','title':'원래 앱의 첫 기록','content':'# 본문\n\n![이미지]('+state['image']+')\n\n[첨부파일]('+state['file']+')','isHidden':False,'isFeatured':True,'tags':['기록']},status=201)[0]['data'];state['post']=public['_id'];state['slug']=public['slug']
+    comment=req('/api/comments','POST',{'postId':state['post'],'author':'독자','password':'test-comment-pass','content':'댓글 유지 검증'},status=201,auth=False)[0]['data']
+    req('/api/comments/'+comment['_id'],'DELETE',{'password':'incorrect-password'},status=401,auth=False)
+    req('/api/comments/'+comment['_id'],'DELETE',{'password':'test-comment-pass'},auth=False)
+    req('/api/auth/logout','POST')
+    req('/api/auth/me',status=401)
+    req('/api/auth/login','POST',{'username':state['username'],'password':state['password']})
+    statefile.parent.mkdir(exist_ok=True)
+    fd=os.open(statefile,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'w') as f: json.dump(state,f)
+    jar.save(ignore_discard=True,ignore_expires=True);os.chmod(str(statefile)+'.cookies',0o600)
 else:
-    state = json.loads(state_path.read_text())
-    # Preserve browser device cookie across process runs to keep device verification enabled.
-    import http.cookiejar as cj
-    cookies = cj.LWPCookieJar(str(state_path) + '.cookies')
-    cookies.load(ignore_discard=True, ignore_expires=True)
-    jar = cookies
-    client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-    request('/ghost/api/admin/users/me/')
-
-assert '첫 기록, 작은 시작' in request('/temp-log-smoke/', authenticated=False).decode()
-assert request(state['image_path'], authenticated=False).startswith(b'\x89PNG')
-if state.get('file_path'):
-    assert b'Temp_log attachment test' in request(state['file_path'], authenticated=False)
-request('/private-smoke-draft/', status=404, authenticated=False)
-request('/missing-page-for-test/', status=404, authenticated=False)
-assert '첫 기록' in request('/tag/notes/', authenticated=False).decode()
-assert 'temp-log-smoke' in request('/rss/', authenticated=False).decode()
-request('/ghost/', authenticated=False)
-if args.phase == 'create':
-    cookies = http.cookiejar.LWPCookieJar(str(state_path) + '.cookies')
-    for cookie in jar:
-        cookies.set_cookie(cookie)
-    cookies.save(ignore_discard=True, ignore_expires=True)
-    os.chmod(str(state_path) + '.cookies', 0o600)
-print(f'PASS {args.phase}: admin session, theme, post, private draft, image/file, tag, RSS, 404.')
+    state=json.loads(statefile.read_text());jar.load(ignore_discard=True,ignore_expires=True)
+req('/api/auth/me')
+assert req('/api/posts/'+state['post'],auth=False)[0]['data']['title']=='원래 앱의 첫 기록'
+assert req(state['image'],auth=False)[0].startswith(b'\x89PNG')
+req(state['file'],auth=False)
+req('/api/posts/'+state['draft'],status=404,auth=False)
+assert all(not p['isHidden'] for p in req('/api/posts',auth=False)[0]['data'])
+req('/admin');req('/project/'+state['slug']);req('/health/ready')
+print('PASS '+a.phase+': CLI owner, server session, CSRF, drafts, comments, image/PDF, persistence.')

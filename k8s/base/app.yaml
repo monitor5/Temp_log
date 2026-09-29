@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: uploads}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 10Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: app}
+spec:
+  type: ClusterIP
+  selector: {app: temp-log}
+  ports: [{name: http, port: 4000, targetPort: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: app}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  revisionHistoryLimit: 3
+  selector: {matchLabels: {app: temp-log}}
+  template:
+    metadata: {labels: {app: temp-log}}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        - name: wait-for-mongo
+          image: temp-log-original:local
+          command: [node, -e]
+          args:
+            - "const n=require('net'); const f=()=>{const s=n.connect(27017,'mongo');s.setTimeout(3000);s.once('connect',()=>process.exit(0));s.once('error',()=>setTimeout(f,2000));s.once('timeout',()=>s.destroy(new Error('timeout')));};f();"
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {cpu: 100m, memory: 128Mi}}
+      containers:
+        - name: app
+          image: temp-log-original:local
+          imagePullPolicy: IfNotPresent
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          env:
+            - {name: NODE_ENV, value: production}
+            - {name: PUBLIC_URL, value: 'http://localhost:8080'}
+            - {name: TRUST_PROXY_HOPS, value: '0'}
+            - {name: MONGO_URI, valueFrom: {secretKeyRef: {name: app-secrets, key: MONGO_URI}}}
+            - {name: SESSION_SECRET, valueFrom: {secretKeyRef: {name: app-secrets, key: SESSION_SECRET}}}
+          ports: [{name: http, containerPort: 4000}]
+          startupProbe: {httpGet: {path: /health/ready, port: http}, periodSeconds: 5, failureThreshold: 60}
+          readinessProbe: {httpGet: {path: /health/ready, port: http}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
+          livenessProbe: {httpGet: {path: /health/live, port: http}, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3}
+          resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: '1', memory: 768Mi}}
+          volumeMounts:
+            - {name: uploads, mountPath: /data/uploads}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: uploads, persistentVolumeClaim: {claimName: uploads}}
+        - {name: tmp, emptyDir: {sizeLimit: 256Mi}}

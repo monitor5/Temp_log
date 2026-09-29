@@ -1,0 +1,23 @@
+{
+  "name": "temp-log",
+  "version": "0.2.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "engines": {
+    "node": ">=24.21.0 <25"
+  },
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w server && npm run build -w client",
+    "test": "npm run test -w server",
+    "admin:create": "npm run admin:create -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

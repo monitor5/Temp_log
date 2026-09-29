@@ -1,18 +1,18 @@
 #!/bin/sh
-# Consistent local backup: stop writers, dump SQL, archive uploaded content.
+# Cold backup of this single-instance service. Stops writers and mongod first.
 set -eu
 cd "$(dirname "$0")/.."
 umask 077
 mkdir -p backups
 lock_dir=backups/.backup.lock
-mkdir "$lock_dir" 2>/dev/null || { echo 'Another backup is running (or a stale backups/.backup.lock remains).' >&2; exit 1; }
-restart_ghost=false
+mkdir "$lock_dir" 2>/dev/null || { echo 'A backup is already running or a stale lock exists.' >&2; exit 1; }
+restart_app=false
+restart_mongo=false
 cleanup() {
     task_status=$?
     trap - EXIT HUP INT TERM
-    if [ "$restart_ghost" = true ]; then
-        docker compose start ghost >/dev/null || task_status=1
-    fi
+    if [ "$restart_mongo" = true ]; then docker compose start --wait --wait-timeout 120 mongo >/dev/null || task_status=1; fi
+    if [ "$restart_app" = true ]; then docker compose start --wait --wait-timeout 120 app >/dev/null || task_status=1; fi
     rmdir "$lock_dir"
     exit "$task_status"
 }
@@ -23,12 +23,14 @@ trap 'exit 143' TERM
 backup_dir="backups/$(date -u +%Y%m%dT%H%M%SZ)-$$"
 mkdir "$backup_dir"
 touch "$backup_dir/INCOMPLETE"
-if [ "$(docker compose ps --status running --services ghost)" = ghost ]; then
-    restart_ghost=true
-    docker compose stop ghost
-fi
-docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump --user=ghost --single-transaction --no-tablespaces --set-gtid-purged=OFF ghost' > "$backup_dir/database.sql"
-docker compose run --rm --no-deps -T --entrypoint tar ghost -czf - -C /var/lib/ghost/content . > "$backup_dir/content.tar.gz"
-printf '%s\n' 'SQL and content belong to the same stopped-writer interval. Keep .env separately for recovery.' > "$backup_dir/README.txt"
+if [ "$(docker compose ps --status running --services app)" = app ]; then restart_app=true; docker compose stop app; fi
+if [ "$(docker compose ps --status running --services mongo)" = mongo ]; then restart_mongo=true; docker compose stop mongo; fi
+mongo_id="$(docker compose ps -aq mongo)"
+[ -n "$mongo_id" ] || { echo 'No initialized Mongo container exists.' >&2; exit 1; }
+[ "$(docker inspect --format '{{.State.ExitCode}}' "$mongo_id")" = 0 ] || { echo 'Mongo did not stop cleanly; backup aborted.' >&2; exit 1; }
+docker compose run --rm --no-deps -T --entrypoint tar mongo -czf - -C /data/db . > "$backup_dir/mongo-data.tar.gz"
+docker compose run --rm --no-deps -T --entrypoint tar app -czf - -C /data/uploads . > "$backup_dir/uploads.tar.gz"
+docker image inspect temp-log-original:local temp-log-mongo:local --format '{{.Id}}' > "$backup_dir/images.txt"
+printf '%s\n' 'Keep the matching .env securely. Restore only to empty volumes with the same Mongo version.' > "$backup_dir/README.txt"
 rm "$backup_dir/INCOMPLETE"
 printf 'Backup saved: %s\n' "$backup_dir"

@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 COMPOSE ?= docker compose
 
-.PHONY: help init build up down status logs check backup theme
+.PHONY: help init build up down status logs check backup admin admin-reset
 
 help:
 	@printf '%s\n' \
@@ -9,13 +9,13 @@ help:
 	  'make down    : stop containers (keep posts, uploads and database)' \
 	  'make status  : show service health and ports' \
 	  'make logs    : follow recent logs' \
-	  'make build   : build the Ghost and MySQL images' \
+	  'make build   : build the app and MongoDB images images' \
 	  'make check   : validate Compose without printing secrets' \
-	  'make backup  : back up SQL and uploads together' \
-	  'make theme   : package the theme ZIP'
+	  'make backup  : back up stopped MongoDB and uploads together' \
+	  'make admin   : create the first administrator securely'
 
 init:
-	@if [ ! -f .env ]; then python3 scripts/init-local.py; fi
+	@python3 scripts/init-local.py
 
 check: init
 	$(COMPOSE) config --quiet
@@ -38,5 +38,8 @@ logs:
 backup:
 	./scripts/backup-local.sh
 
-theme:
-	python3 scripts/package-theme.py
+admin:
+	python3 scripts/create-admin.py
+
+admin-reset:
+	python3 scripts/create-admin.py --reset-password

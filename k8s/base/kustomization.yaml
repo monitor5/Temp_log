@@ -1,9 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: temp-log
+namespace: temp-log-original
 resources:
   - namespace.yaml
-  - configmap.yaml
-  - ghost.yaml
-  - mysql.yaml
+  - app.yaml
+  - mongo.yaml
   - networkpolicy.yaml
+configMapGenerator:
+  - name: mongo-scripts
+    files:
+      - mongo-init.js
+      - mongo-health.js

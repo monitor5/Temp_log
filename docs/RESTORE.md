@@ -1,33 +1,27 @@
-# 로컬 백업 복원
+# 원본 앱의 백업·복구
 
-`./scripts/backup-local.sh`가 만든 SQL과 content.tar.gz는 같은 백업 세트여야 한다. `INCOMPLETE` 파일이 남은 백업은 완료된 것으로 사용하지 않는다. 원래 `.env`와 당시 Ghost/MySQL 이미지 버전을 안전하게 확보한다. 먼저 **새 Compose 프로젝트와 새 볼륨**에서 시험한다. 운영 볼륨에 직접 덮어쓰지 않는다.
+`make backup`은 app과 MongoDB를 잠시 정상 종료하고, 전체 Mongo 데이터와 uploads를 같은 중단 구간에 보관한다. 종료 전 실행 중이던 서비스만 다시 시작한다. 백업 중에는 읽기/쓰기가 중단된다.
 
-아래는 repository 루트에서, `.env`가 준비되고 같은 이미지가 빌드되어 있을 때의 복구 시험 예시다. `task_backup` 경로는 실제 선택한 완료 백업으로 바꾼다. 포트가 비어 있어야 한다.
+완료 세트는 `backups/<timestamp>/mongo-data.tar.gz`, `uploads.tar.gz`, 이미지 ID 기록이다. `INCOMPLETE` 파일이 남았다면 성공한 백업으로 쓰지 않는다. 같은 `.env`와 **동일 MongoDB 버전/이미지**도 안전하게 보관해야 한다. 다른 버전의 물리 파일로 덮어쓰지 않는다.
+
+새 Compose 프로젝트·빈 볼륨에 먼저 복원한다. 아래 `task_backup`은 본인이 선택한 완료 백업 경로로 바꾼다. 운영 프로젝트에 `-v`를 실행하지 않는다.
 
 ```sh
 export COMPOSE_PROJECT_NAME=temp-log-restore-check
-export GHOST_PORT=2371 MAILPIT_PORT=8028 GHOST_URL=http://localhost:2371
+export APP_PORT=8082 PUBLIC_URL=http://localhost:8082
 task_backup=backups/YOUR_COMPLETED_BACKUP
-
-test ! -e "$task_backup/INCOMPLETE"
-test -s "$task_backup/database.sql"
-test -s "$task_backup/content.tar.gz"
-# 기존 동일 이름 프로젝트가 없어야 한다.
-docker compose up -d --wait db
-docker compose exec -T db sh -c \
-  'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user=ghost ghost' \
-  < "$task_backup/database.sql"
-# Ghost 서버를 아직 시작하지 않고 새 content 볼륨에 복원한다.
-docker compose run --rm --no-deps -T --entrypoint tar ghost \
-  -xzf - -C /var/lib/ghost/content < "$task_backup/content.tar.gz"
-docker compose up -d --wait
+# 새 볼륨을 만들되 데이터베이스 프로세스는 아직 시작하지 않는다.
+docker compose create
+docker compose run --rm --no-deps -T --entrypoint tar mongo -xzf - -C /data/db < "$task_backup/mongo-data.tar.gz"
+docker compose run --rm --no-deps -T --entrypoint tar app -xzf - -C /data/uploads < "$task_backup/uploads.tar.gz"
+docker compose up -d --wait --wait-timeout 240
 ```
 
-<http://localhost:2371>에서 글·파일·초안을 확인하고, `/ghost/`에서 기존 owner 계정으로 접속한다. 새 기기 인증 메일은 로컬 Mailpit <http://localhost:8028>에서 확인한다. 글 안의 이미지·첨부파일, 테마, 로그인, 초안 비공개까지 확인한 후 운영 복구를 계획한다. 로컬 SMTP는 외부 메일을 보내지 않는다. 테스트 완료 시 **이 시험 프로젝트만** 정리한다.
+<http://localhost:8082/admin>에서 기존 관리자 계정으로 로그인하고 글·댓글·파일과 초안 접근 제한을 확인한다. 세션 키·DB 비밀번호가 맞아야 한다. 이전 URL의 상대 경로 파일은 그대로 유지된다. 검증을 마친 뒤 시험 프로젝트만 정리한다.
 
 ```sh
 docker compose -p temp-log-restore-check down -v
-unset COMPOSE_PROJECT_NAME GHOST_PORT MAILPIT_PORT GHOST_URL
+unset COMPOSE_PROJECT_NAME APP_PORT PUBLIC_URL
 ```
 
-2026-09-29 위 방식으로 새 프로젝트에 복원해 한국어 글, draft/published DB 상태, 초안404, 백업 원본과 같은 이미지 바이트를 확인했다. MySQL 버전을 내리거나 migration 이후의 DB를 이전 Ghost와 조합하는 복구는 별도 호환성 검증이 필요하다.
+실행 중인 MongoDB 디렉터리를 단순 복사하지 않는다. 무중단 또는 대규모 백업은 replica set/검증된 관리 도구/스토리지 snapshot을 별도로 설계한다. [MongoDB 공식 파일시스템 백업 안내](https://www.mongodb.com/docs/manual/tutorial/backup-with-filesystem-snapshots/).

@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Create local-only credentials without printing or overwriting them."""
 from pathlib import Path
-import os
-import secrets
-
-root = Path(__file__).resolve().parents[1]
-path = root / '.env'
-try:
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-except FileExistsError:
-    raise SystemExit('.env already exists; keeping the current database credentials.')
-with os.fdopen(fd, 'w') as output:
-    output.write('GHOST_URL=http://localhost:2368\nGHOST_PORT=2368\nMAILPIT_PORT=8025\n')
-    output.write(f'MYSQL_PASSWORD={secrets.token_hex(32)}\n')
-    output.write(f'MYSQL_ROOT_PASSWORD={secrets.token_hex(32)}\n')
-print('Created .env (0600). Credentials were not printed. Keep this file private.')
+import secrets, os
+p = Path(__file__).resolve().parents[1] / '.env'
+if p.exists():
+    if 'SESSION_SECRET=' not in p.read_text():
+        raise SystemExit('Existing .env belongs to another configuration. Preserve it before creating this app config.')
+    print('Keeping existing credentials.')
+else:
+    with os.fdopen(os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as f:
+        f.write('APP_PORT=8080\nPUBLIC_URL=http://localhost:8080\n')
+        for key in ['SESSION_SECRET', 'MONGO_ROOT_PASSWORD', 'MONGO_APP_PASSWORD']:
+            f.write(key + '=' + secrets.token_hex(32) + '\n')
+    print('Created private .env; no credentials printed.')

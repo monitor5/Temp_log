@@ -1,10 +1,12 @@
-Copyright (c) 2026 monitor5. All rights reserved.
+Temp_log is a private project maintained by monitor5.
 
-Original Temp_log configuration, documentation, and theme files are private and
-are not offered under an open-source license. No permission to redistribute
-these original files is granted by this notice.
+Original source was imported, at the owner's request, from
+https://github.com/monitor5/sspark_portpolio at commit
+58184033bef3131907d20cedfa8ee87ecdb5e62e.
+Existing notices and package-level license declarations remain applicable.
+This repository does not grant a new blanket license over original source,
+content, or third-party dependencies.
 
-Third-party software retains its own license. In particular, this notice does
-not change or replace the MIT license of Ghost, the GPL license of MySQL, or
-licenses of software included in their container images. See
-third_party/ and docs/LICENSE_REVIEW.md.
+New Temp_log configuration and documentation: Copyright (c) 2026 monitor5.
+All rights reserved. Third-party software retains its own license.
+See docs/LICENSE_REVIEW.md and client/public/licenses/.

@@ -1,48 +1,31 @@
-# 검증 기록
+# 원본 앱 개선판 검증
 
-2026-09-29, 기존 사용자의 운영 클러스터/데이터에 접근하지 않고 별도 환경에서 검증했다.
+2026-09-29, 기존 Ghost나 사용자의 운영 DB와 분리한 `temp-log-test-local` 환경에서 검증했다. 원본 저장소와 실제 사용자 데이터는 변경하지 않았다.
 
-| 검증 | 결과 |
+| 항목 | 확인 내용 |
 | --- | --- |
-| Ghost 6 테마 GScan | 오류/경고 0 |
-| Docker Compose + MySQL 8.4.11 | production 모드 초기화, 일반 DB 사용자, 비루트/read-only root로 정상 기동 |
-| 웹 관리자 E2E | 최초 소유자 생성, 세션 로그인, 테마 활성화, 설정 저장 통과 |
-| 콘텐츠 E2E | 한국어 글 발행, 태그 페이지, RSS, 이미지·TXT 파일 첨부 업로드/다운로드 통과 |
-| 권한 경계 | 익명 관리자 쓰기 403, 미발행 초안 URL 404, 목록에 초안 없음 |
-| 영속성 | 두 컨테이너 재생성 후 로그인 세션·글·이미지·첨부파일·초안 상태 유지 |
-| DB 장애 | 홈페이지는 정상 200 → DB 중단 시 500. cached site API 대신 실제 홈페이지를 readiness로 사용 |
-| 화면 | Chrome 1440×1000, 390×844 확인, 가로 넘침/브라우저 JS 오류 없음 |
-| Kubernetes | 별도 kind v1.37.0 클러스터에서 10개 기본 리소스, restricted Pod Security 허용, PVC 2개 Bound |
-| Kubernetes 권한 | Ghost UID1000/MySQL UID999, read-only root/capabilities 제거 상태로 기동 |
-| Kubernetes 장애 복구 | DB 0개일 때 Ghost NotReady·재시작0, 교체 Pod는 init에서 대기, DB 복구 후 Ready·재시작0 |
-| Kubernetes 데이터 | Pod 교체 후 기존 세션·글·이미지·초안·RSS 유지 |
-| Kubernetes 스키마 | base/public 예시 strict kubeconform 총 21/21 리소스 통과 |
-| 이미지 보안 | 최종 Ghost/MySQL linux/arm64 이미지 Trivy 0.74.0 취약점 탐지 0, SBOM 생성 |
-| 로컬 백업 | Ghost 쓰기 중단 구간에서 SQL+content.tar.gz 생성, 정상 재시작 |
-| 로컬 복구 | 완전히 새 DB/volume에 SQL+content 복원, 한국어 글·초안 접근제어·원본과 같은 이미지 바이트 확인 |
+| 빌드 | 원본 React UI와 Express TypeScript 빌드 통과 |
+| 단위 회귀 | 초안 기본값, query/operator 입력 거부, 활성 media URL 거부 |
+| 관리자 | CLI 생성, 기존 관리자 덮어쓰기 거부, 로그인 쿠키 HttpOnly/SameSite, logout 후401 |
+| 요청 출처 | 다른 Origin의 관리자 쓰기403 |
+| 공개 범위 | 익명 쓰기401, includeHidden401, 초안 ID/slug404, 초안 댓글 조회/쓰기404 |
+| 업로드 | PNG 디코드·업로드/읽기, 가짜 PNG와 SVG400, PDF 다운로드 헤더 |
+| 댓글 | 공개 글에 작성, 틀린 비밀번호401, 올바른 비밀번호 삭제 |
+| 재생성 | 두 컨테이너 재생성 후 세션·글·초안·이미지/PDF 유지 |
+| 브라우저 | 원래 관리자 로그인/새로고침, HTML event/script 및 비허용 iframe 차단 |
+| 백업 | app/Mongo 정상 중지 뒤 DB+uploads 물리 파일 세트 생성, 재기동 |
+| 복구 | 빈 볼륨의 별도 프로젝트에서 Mongo 데이터·한국어 글·업로드 이미지 복원 |
+| Kubernetes | kind v1.37.0에서 app/Mongo Ready, 두 PVC Bound, Mongo 중단 시 live200/ready503, DB 재시작 복구 확인 |
+| 의존성 | npm audit0, runtime 이미지 High/Critical0. Mongo Medium/Low는 별도 기록 |
 
-`tests/smoke.py`는 새 localhost 블로그에서만 owner를 만든다. 이미 초기화한 사이트에서는 create 단계가 중단된다. 테스트 자격증명/쿠키·백업은 ignored 경로에 저장하고 repository/CI artifact에 넣지 않는다. GitHub Actions는 별도로 linux/amd64 빌드·스캔·테마 검사·같은 E2E 및 재생성 검증을 실행한다. 최신 원격 실행 결과는 저장소 Actions에서 확인한다.
+브라우저의 Framer Motion 진입 애니메이션 도중 순간적인 overflow가 관찰되어 Home의 애니메이션 영역을 clip하고 reduced-motion 설정을 반영했다. 레이아웃·카드·기존 모션은 유지한다.
 
-## 아직 검증하지 않은 범위
+## 범위와 한계
 
-- 운영 DNS·TLS·Ingress 컨트롤러·실제 SMTP 계정과 새 기기 인증 메일 전달
-- 실제 운영 StorageClass의 장애, PVC 재연결, CSI snapshot, 클러스터 외부 백업
-- CNI의 NetworkPolicy 통신 차단: kind 기본 kindnet은 정책을 집행하지 않는다
-- 부하 시험, HA, 대규모 콘텐츠, 이전 MongoDB 운영 데이터 마이그레이션
-- 외부 침투 테스트, 완전한 공급망 감사, 타인이 만든 콘텐츠의 권리 증명
+- 운영 Ingress/TLS/DNS/StorageClass/클러스터 CNI의 통신 차단과 외부 백업은 별도 설정·시험이 필요하다.
+- CPU/메모리 부하 시험, 악성 파일 백신 검사, 사용자 자산의 완전한 권리 증명은 수행하지 않았다.
+- 실제 원본 MongoDB/업로드 export가 없어 사용자 콘텐츠 이관은 하지 않았다. 원본 Post/Comment/Admin 구조와 bcrypt hash 호환성을 유지했으나 운영 이관은 복사본 검증이 필요하다.
+- 익명 댓글의 스팸 차단은 기본 IP rate limit 수준이다. 다중 app replica나 대규모 공개 운영은 추가 설계 대상이다.
+- 초안 본문 접근 차단이 이미 업로드한 파일 URL까지 비공개로 만드는 것은 아니다.
 
-관리자 업로드 파일은 URL을 아는 사람이 읽을 수 있다. 초안 본문 비공개 테스트를 파일 접근 제어 보장으로 해석하지 않는다. 기존 저장소에 실제 DB/media export가 없어서 사용자 콘텐츠는 이관하지 않았다. 실제 배포는 도메인·클러스터·SMTP가 정해진 뒤 운영 문서대로 진행해야 한다.
-
-
-## Docker 실행 구성 보완 검증
-
-같은 날짜에 `temp-log-wrap-smoke`라는 별도 Compose 프로젝트로 아래 변경을 검증했다.
-
-- `make up`으로 두 이미지 빌드와 3개 서비스 healthy 확인, 기존 `.env` 보존.
-- Ghost는 app/database 두 네트워크, MySQL은 internal database만, Mailpit은 app만 연결됨을 확인. DB host port 바인딩 없음.
-- 이미지에 내장된 healthcheck가 Compose에 상속됨을 확인하고 DB 중단 시 종료 코드 1 확인.
-- init 프로세스, PID 제한, 서비스별 local 로그 순환, 읽기 전용 root와 capability 제거 확인.
-- 관리자 등록/로그인·게시·초안 비공개·이미지/파일 업로드 후 컨테이너 전체 재생성, 세션과 콘텐츠 보존 통과.
-- README와 아키텍처 문서의 Mermaid 4개를 실제 렌더러로 파싱·렌더링 확인.
-
-이는 로컬 컨테이너와 문서 검증이다. Kubernetes는 변경한 종료 유예 시간(90초)을 포함해 Kustomize 렌더를 확인했으며, 운영 클러스터에 새로 적용하지 않았다.
+CI는 Node24에서 build, npm audit, 회귀 테스트, 별도 Docker E2E와 재생성, Kustomize 렌더, 이미지 스캔/SBOM을 수행한다. 테스트 자격증명·쿠키·백업은 artifacts 업로드 및 Git에서 제외한다.

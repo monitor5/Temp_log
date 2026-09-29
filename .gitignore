@@ -11,3 +11,10 @@ node_modules/
 *.pem
 *.key
 .secrets/
+
+client/dist/
+server/dist/
+server/uploads/
+uploads/
+
+*.tsbuildinfo

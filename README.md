@@ -1,109 +1,89 @@
-# Temp_log
+# Temp_log · 원본 Arch-Log 개선판
 
-웹 관리자에서 글·이미지·파일을 올리는 개인 블로그. Ghost 6.65.0 + MySQL 8.4 LTS를 기반으로, 직접 만든 한국어 테마와 Docker/Kubernetes 운영 구성을 담았습니다.
+`monitor5/sspark_portpolio`의 **React 화면·관리자 편집기·Express API·MongoDB 모델을 가져와 문제를 수정**한 개인 블로그/포트폴리오다. 홈, 프로젝트/에세이 상세, 갤러리, 검색, 댓글, Markdown 편집과 파일 업로드를 유지한다. 다른 CMS는 설계 참고만 했으며 서비스로 실행하지 않는다.
 
-기존 `sspark_portpolio`는 검토 대상으로만 사용했습니다. 인증·댓글·업로드 API, React 앱, MongoDB, 샘플 실적/학교 브랜딩, 외부 폰트를 복사하지 않았습니다. 원본은 변경하지 않았습니다.
+이전 Ghost 교체 구현은 `archive/ghost-prototype` 브랜치에 보관했다. 기존 Ghost/MySQL 볼륨과 원본 저장소는 삭제하지 않는다. [원본 출처와 변경 범위](docs/PROVENANCE.md), [개선 참고 자료](docs/IMPROVEMENTS.md).
 
-[기술 스택·Docker·Kubernetes 구조도](docs/ARCHITECTURE.md)
+## 실행
 
-## 바로 실행
-
-Docker Desktop/Engine + Compose, Python 3, Make가 필요합니다. 먼저 Docker 엔진을 실행합니다. 실행 시 약 2~3GB 여유 메모리를 권장합니다.
+Docker Compose, Make, Python 3가 필요하다.
 
 ```sh
 make up
+make admin
 ```
 
-기존 `.env`의 비밀번호를 유지하며, 파일이 없을 때만 생성합니다. 이미지 빌드와 서비스 healthy 확인까지 한 번에 수행합니다. Make가 없으면 `python3 scripts/init-local.py`를 최초 한 번 실행한 뒤 `docker compose up --build -d --wait --wait-timeout 240`으로 실행할 수 있습니다.
-
-- 블로그: <http://localhost:2368>
-- 관리자: <http://localhost:2368/ghost/>
-- 로컬 인증 메일함: <http://localhost:8025> (Mailpit, 실제 이메일을 외부로 보내지 않습니다.)
+- 블로그: <http://localhost:8080>
+- 관리자: <http://localhost:8080/admin>
+- `make admin`에서 본인 사용자명과 새 비밀번호를 입력한다. 비밀번호는 화면·명령 인자·저장소에 기록하지 않는다. 최소 14자, UTF-8 최대 72바이트다.
+- `.env`는 `make init` 때 난수로 만들고 이후 유지한다. 관리자 계정은 웹에서 익명 생성할 수 없다.
 
 ```sh
-make status  # 실행 상태와 포트
-make logs    # 최근 로그
-make down    # 컨테이너 종료, 글·업로드·DB 볼륨 유지
-make backup  # SQL과 업로드를 함께 백업
+make status       # 상태
+make logs         # 로그
+make down         # 종료, DB/업로드 볼륨 유지
+make backup       # 서비스 중단 → Mongo 데이터와 업로드 함께 백업 → 재시작
+make admin-reset  # 관리 권한이 있는 터미널에서 비밀번호 변경, 기존 세션 폐기
 ```
+
+## 원본을 유지하며 고친 부분
+
+| 원본 기능 | 유지·수정 |
+| --- | --- |
+| 홈·갤러리·카드·타이포그래피·스크롤 모션 | 기존 컴포넌트와 스타일 유지. 영문 폰트는 같은 폰트를 자체 제공 |
+| 관리자 로그인 | localStorage JWT → HttpOnly/SameSite 서버 세션, MongoDB에 저장 |
+| 글 작성·수정 | 새 글은 초안 기본값. 관리자만 숨김 글 조회, 공개 저장은 명시적 선택 |
+| HTML/Markdown 미리보기 | 공통 sanitizer, 영상 유지, YouTube/Vimeo만 제한된 iframe 허용 |
+| 업로드 | 실제 파일 형식 확인, 이미지 디코드/재인코딩, UUID 파일명, 파일/전체 용량 제한, PDF 첨부 |
+| 댓글 | 원래 비회원 댓글/비밀번호 삭제 유지, 초안 댓글 접근 차단, 입력·조회 수 제한 |
+| 관리자 목록 | 서버 한도에 맞춘 페이지 이동, 모바일/키보드 조작, 실패 표시 |
+| 연락처 | 예시 학교 주소·전화번호를 개인 설정으로 분리, 문의는 메일 앱으로 연결 |
+| 운영 | 비루트 Docker, 영구 볼륨, DB 권한 분리, readiness/liveness, 정상 종료 |
+
+프로필·연락처·소셜 링크는 `client/src/site.ts`에서 실제 공개할 값으로 채운다. 임의 연락처로 메일을 보내지 않도록 기본값은 비워 뒀다. 로고와 주요 화면 이름은 원본 Arch-Log를 유지했다. 기본 시드 콘텐츠와 공용 관리자 비밀번호는 제공하지 않는다.
+
+업로드한 파일은 `/uploads/...` URL을 알면 읽을 수 있다. **초안 본문 비공개와 파일 비공개는 별개**이며 이 앱은 비밀 문서 보관함이 아니다. PDF는 다운로드로 제공하고 SVG/HTML 파일 업로드는 차단한다.
+
+## 기술 구조
 
 ```mermaid
 flowchart LR
-    browser["브라우저"] -->|"localhost:2368"| ghost["Ghost · 웹 관리자 + 블로그"]
-    ghost -->|"내부 SQL"| mysql["MySQL 8.4"]
-    ghost --> content[("이미지·파일 볼륨")]
-    mysql --> data[("DB 볼륨")]
-    ghost -->|"SMTP"| mailpit["Mailpit · 로컬 메일함"]
+  browser["브라우저 · 원래 React UI"] -->|"동일 출처 HTTP"| app["Express 5 · Node.js 24"]
+  app -->|"글 · 댓글 · 관리자 · 세션"| mongo[("MongoDB 8.0")]
+  app -->|"이미지 · 영상 · PDF"| uploads[("업로드 볼륨")]
+  mongo --> disk[("DB 볼륨")]
 ```
 
-처음 관리자 화면에서 **본인 이메일과 새 비밀번호로 소유자 계정을 생성**합니다. 기본 관리자 계정이나 공용 비밀번호는 없습니다. Compose의 포트는 `127.0.0.1`에만 열립니다.
+[Docker/Kubernetes 구조도](docs/ARCHITECTURE.md) · [Kubernetes 배포](docs/KUBERNETES.md) · [백업과 복구](docs/RESTORE.md)
 
-초기 설정:
+기본 주소는 localhost에만 열리고 DB 포트는 호스트에 공개하지 않는다. 실제 운영에는 HTTPS, 올바른 `PUBLIC_URL`, 신뢰하는 프록시 경로, 스토리지·백업 설정이 필요하다. 외부 운영 배포는 이 작업에 포함하지 않는다. 업로드와 메모리 기반 rate limit 때문에 app은 **1 replica + Recreate**로 운영한다. 서버 세션만 공유한다고 수평 확장이 완료되는 것은 아니다.
 
-1. Settings에서 제목을 `Temp_log`, 언어를 `ko`로 설정하고 소개 문구를 입력합니다.
-2. Design & branding → Change theme에서 `temp-log`를 활성화합니다. 테마가 목록에 없다면 `python3 scripts/package-theme.py`로 만든 `artifacts/temp-log.zip`을 업로드합니다.
-3. Membership의 가입 설정을 Nobody로, 댓글을 Off로, Portal 버튼을 숨김으로 설정합니다. 필요할 때만 켜세요. 기본 테마에는 가입·유료 결제·댓글 UI가 없습니다.
-4. Pages에서 소개/프로젝트/연락처 페이지를 만들고 Navigation에 추가합니다. 샘플 연락처나 타인의 실적은 미리 넣지 않았습니다.
-5. Ghost가 자동 생성하는 Coming soon 샘플 글과 기본 About 페이지를 삭제하거나 본인 소개로 수정합니다.
-6. Posts → New post에서 글을 작성하고 에디터의 `+` 메뉴로 이미지·파일·Markdown·코드·갤러리를 추가합니다. Draft와 Publish를 구분해 게시합니다.
+## 개발·검증
 
-파일을 업로드해 얻은 URL은 **초안에 삽입했더라도 URL을 아는 사람이 읽을 수 있습니다.** 이 구성은 공개할 자료의 블로그이며, 비밀 파일 보관함이 아닙니다. 일반 파일 첨부는 Ghost가 허용하는 형식을 사용하고 임의의 실행파일 업로더를 추가하지 않습니다.
-
-`content/themes/temp-log`는 저장소에서 관리하는 테마입니다. 재시작 시 이미지의 테마 파일을 복사하므로, 수정은 이 저장소의 `theme/`에서 하고 이미지를 다시 빌드합니다. 관리자에서 업로드한 다른 이름의 테마·글·미디어는 유지됩니다.
-
-## 들어 있는 것
-
-- 웹 에디터, 초안/예약 발행, 이미지·파일 업로드, 태그, 소개 페이지, RSS 및 Ghost 기본 SEO
-- 빌드 도구·외부 폰트·프론트엔드 npm 의존성 없는 자체 테마
-- 비루트 사용자, 읽기 전용 root filesystem, capability 제거, 메모리/CPU 제한
-- 데이터베이스와 업로드용 별도 영구 볼륨
-- Kubernetes 단일 Ghost Deployment + MySQL StatefulSet, probes, NetworkPolicy, Secret 참조
-- 새 블로그에만 실행하는 로그인·발행·비공개 초안·업로드·재시작 검증
-
-Ghost 코어를 임의로 잘라내거나 별도 인증을 구현하지 않습니다. Ghost Admin에는 멤버십/뉴스레터 등 업스트림 기능이 남아 있지만, 이 저장소는 일반 개인 블로그에 필요한 화면·운영 구성을 제공합니다. Tinybird, ActivityPub 서버, 결제, 외부 분석기는 배포하지 않습니다.
-
-## Kubernetes 배포
-
-[실행·공개·백업·복구 안내](docs/KUBERNETES.md)를 따라 `k8s/base`를 적용합니다. 기본 서비스는 ClusterIP이며 외부 Ingress가 없습니다. 먼저 포트 포워딩으로 소유자 계정을 만든 후 도메인·HTTPS·실제 SMTP·레지스트리 접근을 설정해 공개합니다.
-
-Ghost는 **복제 1개 + Recreate**입니다. Ghost는 clustering을 지원하지 않으며 로컬 업로드와 스케줄러가 있으므로 HPA를 붙이지 않습니다. 트래픽 확장은 캐시/CDN을 앞에 두는 방향입니다. 단일 서버 장애 시 잠시 중단될 수 있습니다. [Ghost 공식 호스팅 설계](https://github.com/TryGhost/Docs/blob/main/hosting.mdx)
-
-GitHub 저장소가 private이라는 사실은 배포된 블로그를 비공개로 만들지 않습니다. 이 작업은 저장소와 배포 구성을 준비하며, 실제 운영 클러스터·도메인·메일 계정은 포함하지 않습니다.
-
-## 백업과 업데이트
+Node.js 24.21 이상 24.x와 MongoDB가 필요하다. 일반 개발 실행은 `SESSION_SECRET`, `MONGO_URI`, `PUBLIC_URL=http://localhost:5173`을 셸에 설정한 뒤 `npm run dev`를 실행한다. Vite가 `/api`와 `/uploads`를 서버 4000으로 전달한다.
 
 ```sh
-./scripts/backup-local.sh
+npm ci --ignore-scripts
+npm run build
+npm test
+npm audit
 ```
 
-잠시 Ghost 쓰기를 중단하고 `backups/<UTC 시간>/`에 SQL과 전체 content 압축본을 함께 저장한 뒤 다시 시작합니다. `.env`는 별도로 안전하게 보관합니다. 백업을 다른 저장소로 옮기고 실제 복원 시험을 해야 하며, 같은 Docker 호스트의 볼륨만으로는 백업이 되지 않습니다. 복구 절차는 [로컬 복구 안내](docs/RESTORE.md)와 [Kubernetes 운영 안내](docs/KUBERNETES.md)에 있습니다.
-
-이미지 tag와 digest를 함께 고정했습니다. Dockerfile의 버전 갱신 → 스캔/검증 → DB와 content 백업 → 재배포 순서로 유지보수합니다. DB migration 이후 이미지 버전만 되돌리는 복구는 안전하지 않을 수 있습니다.
-
-## 검증
+통합 시험은 새 DB를 가진 별도 환경에서만 실행한다.
 
 ```sh
-# 실사용 블로그에 실행하지 마세요. 완전히 분리된 일회용 테스트입니다.
-GHOST_PORT=2369 MAILPIT_PORT=8026 GHOST_URL=http://localhost:2369 \
-  docker compose -p temp-log-smoke up --build -d --wait
+export COMPOSE_PROJECT_NAME=temp-log-test-local
+export APP_PORT=8081 PUBLIC_URL=http://localhost:8081
+make up
 python3 tests/smoke.py create
-GHOST_PORT=2369 MAILPIT_PORT=8026 GHOST_URL=http://localhost:2369 \
-  docker compose -p temp-log-smoke restart db ghost
-GHOST_PORT=2369 MAILPIT_PORT=8026 GHOST_URL=http://localhost:2369 \
-  docker compose -p temp-log-smoke up -d --wait
+# 컨테이너를 다시 만들어도 볼륨과 세션이 유지되는지 확인
+docker compose up -d --force-recreate --wait --wait-timeout 240
 python3 tests/smoke.py verify
-# 테스트가 만든 볼륨만 삭제합니다.
-docker compose -p temp-log-smoke down -v
+# 생성한 테스트 데이터만 삭제
+docker compose down -v
+unset COMPOSE_PROJECT_NAME APP_PORT PUBLIC_URL
 ```
 
-재실행할 때는 테스트용 `artifacts/smoke-state.json`과 `.cookies` 파일을 먼저 삭제합니다. CI는 임시 환경에서 같은 흐름과 GScan을 검사합니다. 검증 상세와 한계: [VALIDATION.md](docs/VALIDATION.md).
+재시험은 이전 `artifacts/original-smoke.json`과 `.cookies`를 정리한 뒤 새 테스트 DB에서 진행한다. `create`는 이미 관리자가 있는 DB에 덮어쓰지 않는다. 실제 사용 DB에 테스트를 실행하지 않는다.
 
-## 검토 기록과 권리
-
-- [원본 코드·권한·설계 검토](docs/AUDIT.md)
-- [원본 의존성 및 지원 상태](docs/DEPENDENCY_AUDIT.md)
-- [컨테이너 취약점 점검과 제거 내역](docs/CONTAINER_AUDIT.md)
-- [라이선스 검토](docs/LICENSE_REVIEW.md)
-- [보안 운영 기준](SECURITY.md)
-
-새 자체 테마/설정은 비공개 `UNLICENSED / All rights reserved`이며 Ghost(MIT), MySQL(GPLv2), 기타 이미지 구성요소의 라이선스는 별도로 유지됩니다. 이미지나 수정한 GPL 구성요소를 제3자에게 전달할 때에는 해당 고지·소스 제공 의무를 추가 확인해야 합니다. 게시하는 글·사진·파일은 본인이 사용할 권리가 있는 자료만 올리세요.
+[수정 근거](docs/AUDIT.md) · [검증 결과와 한계](docs/VALIDATION.md) · [라이선스](docs/LICENSE_REVIEW.md) · [보안 운영](SECURITY.md)

@@ -4,7 +4,7 @@ set -eu
 cd "$(dirname "$0")/.."
 command -v trivy >/dev/null 2>&1 || { echo 'Trivy is required: https://trivy.dev/' >&2; exit 1; }
 mkdir -p artifacts
-for task_image in temp-log:local temp-log-db:local; do
+for task_image in temp-log-original:local temp-log-mongo:local; do
     task_name="${task_image%:*}"
     trivy image --image-src docker --scanners vuln --format json \
         --output "artifacts/$task_name-trivy.json" "$task_image"

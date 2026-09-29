@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata: {name: mongo}
+spec:
+  clusterIP: None
+  selector: {app: mongo}
+  ports: [{name: mongo, port: 27017, targetPort: mongo}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: mongo}
+spec:
+  serviceName: mongo
+  replicas: 1
+  selector: {matchLabels: {app: mongo}}
+  template:
+    metadata: {labels: {app: mongo}}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: mongo
+          image: temp-log-mongo:local
+          imagePullPolicy: IfNotPresent
+          args: [mongod, --bind_ip_all, --auth, --wiredTigerCacheSizeGB, '0.25']
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          env:
+            - {name: HOME, value: /tmp}
+            - {name: MONGO_INITDB_ROOT_USERNAME, value: root}
+            - {name: MONGO_INITDB_ROOT_PASSWORD, valueFrom: {secretKeyRef: {name: mongo-secrets, key: MONGO_ROOT_PASSWORD}}}
+            - {name: MONGO_APP_PASSWORD, valueFrom: {secretKeyRef: {name: mongo-secrets, key: MONGO_APP_PASSWORD}}}
+          ports: [{name: mongo, containerPort: 27017}]
+          startupProbe: {exec: {command: [mongosh, --quiet, --host, '127.0.0.1', /opt/health.js]}, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 60}
+          readinessProbe: {exec: {command: [mongosh, --quiet, --host, '127.0.0.1', /opt/health.js]}, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
+          livenessProbe: {tcpSocket: {port: mongo}, periodSeconds: 20, failureThreshold: 5}
+          resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {cpu: '1', memory: 1Gi}}
+          volumeMounts:
+            - {name: data, mountPath: /data/db, subPath: mongo}
+            - {name: tmp, mountPath: /tmp}
+            - {name: config, mountPath: /data/configdb}
+            - {name: scripts, mountPath: /opt/health.js, subPath: mongo-health.js, readOnly: true}
+            - {name: scripts, mountPath: /docker-entrypoint-initdb.d/init.js, subPath: mongo-init.js, readOnly: true}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 128Mi}}
+        - {name: config, emptyDir: {sizeLimit: 16Mi}}
+        - {name: scripts, configMap: {name: mongo-scripts}}
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec: {accessModes: [ReadWriteOnce], resources: {requests: {storage: 10Gi}}}
