@@ -14,7 +14,7 @@ export function Layout() {
         </aside>
 
         {/* 메인 콘텐츠 */}
-        <main className="min-h-[calc(100vh-5rem)]">
+        <main className="min-w-0 min-h-[calc(100vh-5rem)]">
           <Outlet />
         </main>
 

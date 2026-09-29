@@ -9,7 +9,11 @@ import { createError, asyncHandler } from '../middlewares/error.middleware.js';
 
 // GET /api/comments?postId=
 export const getCommentsByPost = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-  const { postId } = z.object({postId: z.string().regex(/^[a-f0-9]{24}$/i)}).parse(req.query);
+  const { postId, page, limit } = z.object({
+    postId: z.string().regex(/^[a-f0-9]{24}$/i),
+    page: z.coerce.number().int().min(1).max(100000).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  }).strict().parse(req.query);
 
   if (!postId || !mongoose.Types.ObjectId.isValid(postId as string)) {
     throw createError('유효한 게시글 ID가 필요합니다', 400);
@@ -17,15 +21,21 @@ export const getCommentsByPost = asyncHandler(async (req: Request, res: Response
 
   if (!(await Post.exists({_id: postId, isHidden: false}))) throw createError('게시글을 찾을 수 없습니다', 404);
 
-  const comments = await Comment.find({ postId })
-    .sort({ createdAt: -1 }).limit(100)
-    .select('-passwordHash')
-    .lean();
+  const [comments, total] = await Promise.all([
+    Comment.find({ postId })
+      .sort({ createdAt: -1, _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .select('-passwordHash')
+      .lean(),
+    Comment.countDocuments({ postId }),
+  ]);
 
   res.json({
     success: true,
     data: comments,
-    count: comments.length
+    count: total,
+    pagination: {page, limit, total, totalPages: Math.ceil(total / limit)},
   });
 });
 
@@ -124,4 +134,3 @@ export const deleteCommentByAdmin = asyncHandler(async (req: Request, res: Respo
     message: '댓글이 삭제되었습니다'
   });
 });
-

@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 
 export function AdminLogin() {
   const navigate = useNavigate();
-  const { setAuth, isAuthenticated } = useAuthStore();
+  const { setAuth, isAuthenticated, expired } = useAuthStore();
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,16 +50,20 @@ export function AdminLogin() {
           >
             <Lock className="w-8 h-8 text-surface" />
           </motion.div>
-          <h1 className="font-serif text-2xl text-surface mb-2">Arch-Log Admin</h1>
+          <h1 className="font-serif text-2xl text-surface mb-2">Temp-Log Admin</h1>
           <p className="text-surface/60 text-sm">관리자 로그인이 필요합니다</p>
         </div>
 
+        {expired && <p role="status" className="text-surface mb-4">세션이 만료되었습니다. 다시 로그인해주세요.</p>}
         {/* 로그인 폼 */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <input
               type="text"
               placeholder="사용자 이름"
+              aria-label="사용자 이름"
+              autoComplete="username"
+              maxLength={50}
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               className="w-full px-4 py-4 bg-surface/10 border border-surface/20 text-surface 
@@ -72,6 +76,9 @@ export function AdminLogin() {
             <input
               type="password"
               placeholder="비밀번호"
+              aria-label="비밀번호"
+              autoComplete="current-password"
+              maxLength={72}
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="w-full px-4 py-4 bg-surface/10 border border-surface/20 text-surface 
@@ -85,6 +92,7 @@ export function AdminLogin() {
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              role="alert"
               className="text-red-400 text-sm text-center"
             >
               {error}

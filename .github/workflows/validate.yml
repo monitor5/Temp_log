@@ -30,6 +30,22 @@ jobs:
         run: |
           docker compose up -d --force-recreate --wait --wait-timeout 240
           python3 tests/smoke.py verify --project temp-log-test-ci
+      - name: Install the real browser
+        run: npx playwright install --with-deps chromium
+      - name: Prepare browser QA credentials
+        env:
+          QA_COMPOSE_PROJECT: temp-log-test-ci
+          QA_CREDENTIAL_SOURCE: artifacts/original-smoke.json
+          BROWSER_QA_URL: http://localhost:8081
+        run: node scripts/prepare-browser-qa.mjs
+      - name: Reset disposable in-memory rate limits before browser suite
+        run: |
+          docker compose restart app
+          docker compose up -d --wait --wait-timeout 120
+      - name: Browser scenario QA
+        env:
+          BROWSER_QA_URL: http://localhost:8081
+        run: npm run test:browser
       - name: Render Kubernetes manifests
         run: |
           kubectl kustomize k8s/base > artifacts/k8s-base.yaml
@@ -53,4 +69,7 @@ jobs:
             artifacts/*-trivy.json
             artifacts/*-sbom.json
             artifacts/k8s-*.yaml
+            artifacts/browser-qa/results.json
+            artifacts/browser-qa/*.png
+            artifacts/browser-qa/test-output/**/*.png
           retention-days: 7

@@ -5,16 +5,16 @@
   "results": [
     {
       "report": "temp-log-original-trivy.json",
-      "sha256": "ee31b36d71d8d9a1194611fb845cb6d6cf9b396fc1a4e00131d2950fad43b400",
+      "sha256": "5ec69a6b8fc3566da42449c7fb91ba21b6c7311fc49207a39c86792ffe32b1fd",
       "image": "temp-log-original:local",
-      "image_id": "sha256:cdd2148655b36cd5b1a2b90a35d92913f7d6967391e6c1ef7e024102acf26437",
+      "image_id": "sha256:03a0e1f09b9de64df883d9202e83b6b602f85283a2adfc218e9957ed99780954",
       "severities": {}
     },
     {
       "report": "temp-log-mongo-trivy.json",
-      "sha256": "3f068c9f2f19d78783b816eb7f1fcd9bc4811e0f3e76ff227c07f87437ad2df5",
+      "sha256": "dfbb742aaa95a74c511c5656b21297ccc493fb59adcba6ff37fdb1d26b137c32",
       "image": "temp-log-mongo:local",
-      "image_id": "sha256:58f4cfbd62419b601fee513e7b2812e8f56845f1fbf6ef5b4d4f90f769baa906",
+      "image_id": "sha256:08b53a8d78499045653cffb197d8bd7e6fc7c330e2c4b9b826f2ac8a794e8a74",
       "severities": {
         "MEDIUM": 25,
         "LOW": 4

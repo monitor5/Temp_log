@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { postsApi } from '@/lib/api';
 import { HeroCard } from '@/components/cards/HeroCard';
 import { SideStoryCard } from '@/components/cards/SideStoryCard';
@@ -9,15 +10,16 @@ import { InlineSearchBar } from '@/components/search/InlineSearchBar';
 
 export function Home() {
   const reducedMotion = useReducedMotion();
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['featured-posts'],
     queryFn: postsApi.getFeatured,
   });
 
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const posts = data?.data || [];
-  const heroPost = posts[currentHeroIndex];
-  const sidePosts = posts.filter((_, i) => i !== currentHeroIndex).slice(0, 3);
+  const activeIndex = posts.length ? currentHeroIndex % posts.length : 0;
+  const heroPost = posts[activeIndex];
+  const sidePosts = posts.filter((_, i) => i !== activeIndex).slice(0, 3);
 
   // Intersection Observer for slide-in effect
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -37,7 +39,8 @@ export function Home() {
   if (error) {
     return (
       <div className="py-20 text-center">
-        <p className="text-secondary">콘텐츠를 불러오는데 실패했습니다.</p>
+        <p role="alert" className="text-secondary">콘텐츠를 불러오는데 실패했습니다.</p>
+        <button type="button" onClick={() => void refetch()} disabled={isFetching} className="btn-primary mt-4">다시 시도</button>
       </div>
     );
   }
@@ -59,11 +62,11 @@ export function Home() {
       <div className="py-8 lg:py-12">
         <div className="container-narrow">
           {/* 메인 그리드 - 히어로 + 사이드 */}
-          <div className="grid lg:grid-cols-[1fr_340px] gap-6 lg:gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 lg:gap-10">
             {/* 메인 시네마 카드 */}
             <motion.div
               layout
-              className="relative"
+              className="relative min-w-0"
             >
               {isLoading ? (
                 <Skeleton className="aspect-cinema w-full" />
@@ -76,12 +79,13 @@ export function Home() {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.5, ease: 'easeInOut' }}
                   >
-                    <HeroCard post={heroPost} />
+                    <HeroCard post={heroPost} hasPagination={posts.length > 1} />
                   </motion.div>
                 </AnimatePresence>
               ) : (
-                <div className="aspect-cinema bg-surface-dark flex items-center justify-center">
-                  <p className="text-muted">아직 게시글이 없습니다</p>
+                <div className="aspect-cinema bg-surface-dark flex flex-col items-center justify-center gap-4 p-4 text-center">
+                  <p role="status" className="text-muted">홈에 고정된 글이 없습니다.</p>
+                  <Link to="/gallery" className="btn-ghost">전체 글 보기</Link>
                 </div>
               )}
 
@@ -92,13 +96,10 @@ export function Home() {
                     <button
                       key={idx}
                       onClick={() => setCurrentHeroIndex(idx)}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        idx === currentHeroIndex
-                          ? 'bg-surface w-6'
-                          : 'bg-surface/40 hover:bg-surface/60'
-                      }`}
-                      aria-label={`Go to slide ${idx + 1}`}
-                    />
+                      className="w-11 h-11 flex items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      aria-label={`대표 글 ${idx + 1} 보기`}
+                      aria-pressed={idx === activeIndex}
+                    ><span aria-hidden="true" className={`h-2 rounded-full transition-all duration-300 ${idx === activeIndex ? 'bg-surface w-6' : 'bg-surface/60 w-2'}`} /></button>
                   ))}
                 </div>
               )}

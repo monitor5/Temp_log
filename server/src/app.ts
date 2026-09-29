@@ -7,6 +7,7 @@ import path from 'node:path';
 import { config } from './config/env.js';
 import { optionalAuth } from './middlewares/auth.middleware.js';
 import { errorHandler, createError } from './middlewares/error.middleware.js';
+import { sameOriginMutation, jsonBodyParser } from './middlewares/request.middleware.js';
 import authRoutes from './routes/auth.routes.js';
 import postRoutes from './routes/post.routes.js';
 import commentRoutes from './routes/comment.routes.js';
@@ -31,13 +32,8 @@ app.get(['/health/ready', '/api/health'], async (_req, res) => {
   } catch { res.status(503).json({status: 'unavailable'}); }
 });
 app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
-app.use('/api', (req, _res, next) => {
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && (req.get('Origin') !== config.ORIGIN || req.get('X-Requested-With') !== 'TempLog')) {
-    next(createError('허용되지 않은 요청 출처입니다', 403)); return;
-  }
-  next();
-});
-app.use(express.json({limit: '256kb'}));
+app.use('/api', sameOriginMutation);
+app.use(jsonBodyParser);
 app.use('/api', session({name: 'temp_log.sid', secret: config.SESSION_SECRET, store: sessionStore, resave: false, saveUninitialized: false,
   cookie: {httpOnly: true, secure: config.SECURE_COOKIE, sameSite: 'strict', maxAge: 12 * 60 * 60 * 1000, path: '/'}}));
 app.use('/api', optionalAuth);

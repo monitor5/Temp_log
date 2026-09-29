@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ChevronDown, X } from 'lucide-react';
@@ -11,6 +11,8 @@ export function InlineSearchBar() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
+  useEffect(() => { setLocalQuery(query); }, [query]);
+
   // Debounced search
   const handleInputChange = useCallback((value: string) => {
     setLocalQuery(value);
@@ -18,10 +20,11 @@ export function InlineSearchBar() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setQuery(localQuery);
+    const nextQuery = localQuery.trim();
+    setQuery(nextQuery);
     
     const params = new URLSearchParams();
-    if (localQuery) params.set('query', localQuery);
+    if (nextQuery) params.set('query', nextQuery);
     if (type !== 'all') params.set('type', type);
     params.set('sort', sort === 'date' ? 'createdAt' : 'title');
     params.set('order', order);
@@ -46,6 +49,8 @@ export function InlineSearchBar() {
           />
           <input
             type="text"
+            aria-label="검색어"
+            maxLength={200}
             value={localQuery}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
@@ -59,6 +64,7 @@ export function InlineSearchBar() {
             <button
               type="button"
               onClick={clearSearch}
+              aria-label="검색어 지우기"
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted 
                        hover:text-primary transition-colors"
             >
@@ -71,6 +77,8 @@ export function InlineSearchBar() {
         <button
           type="button"
           onClick={() => setIsFilterOpen(!isFilterOpen)}
+          aria-expanded={isFilterOpen}
+          aria-controls="inline-search-filters"
           className={`flex items-center gap-2 px-4 py-3 border transition-all duration-200 ${
             isFilterOpen 
               ? 'bg-primary text-surface border-primary' 
@@ -100,6 +108,7 @@ export function InlineSearchBar() {
       <AnimatePresence>
         {isFilterOpen && (
           <motion.div
+            id="inline-search-filters"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -177,6 +186,7 @@ function FilterButton({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={`px-3 py-1.5 text-xs font-medium uppercase tracking-wide transition-all duration-200 ${
         active
           ? 'bg-primary text-surface'
@@ -187,4 +197,3 @@ function FilterButton({
     </button>
   );
 }
-

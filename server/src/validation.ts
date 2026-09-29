@@ -2,8 +2,9 @@ import { z } from 'zod';
 export const mediaUrl = z.string().max(2048).refine(value => value === '' || (!value.includes('..') && /^\/uploads\/[^?#\\]+$/.test(value)) || (() => { try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password; } catch { return false; } })(), 'Invalid media URL');
 export const postInput = z.object({
   type: z.enum(['project', 'essay']), title: z.string().trim().min(1).max(200),
-  slug: z.string().regex(/^[a-z0-9가-힣-]+$/).max(160).optional(),
-  content: z.string().min(1).max(200000), tags: z.array(z.string().trim().min(1).max(50)).max(20),
+  slug: z.string().regex(/^[a-z0-9가-힣-]+$/).max(160)
+    .refine(value => value !== 'featured' && !/^[a-f0-9]{24}$/.test(value), 'Slug conflicts with an API route or post ID').optional(),
+  content: z.string().min(1).max(200000).refine(value => value.trim().length > 0, 'Content must not be blank'), tags: z.array(z.string().trim().min(1).max(50)).max(20),
   thumbnail: mediaUrl.optional(), media: z.array(mediaUrl).max(50).optional(),
   isHidden: z.boolean(), isFeatured: z.boolean(), featuredOrder: z.number().int().min(0).max(1000).optional(),
 }).strict();

@@ -15,9 +15,12 @@
     "dev": "concurrently -k \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w server && npm run build -w client",
     "test": "npm run test -w server",
-    "admin:create": "npm run admin:create -w server"
+    "admin:create": "npm run admin:create -w server",
+    "test:browser": "playwright test",
+    "qa:prepare": "node scripts/prepare-browser-qa.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "concurrently": "^9.2.1"
   }
 }

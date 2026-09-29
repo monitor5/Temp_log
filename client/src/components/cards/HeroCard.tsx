@@ -5,9 +5,10 @@ import type { Post } from '@/lib/api';
 
 interface HeroCardProps {
   post: Post;
+  hasPagination?: boolean;
 }
 
-export function HeroCard({ post }: HeroCardProps) {
+export function HeroCard({ post, hasPagination = false }: HeroCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const linkPath = post.type === 'project' ? `/project/${post.slug}` : `/story/${post.slug}`;
   
@@ -18,9 +19,9 @@ export function HeroCard({ post }: HeroCardProps) {
   });
 
   return (
-    <Link to={linkPath}>
+    <Link to={linkPath} title={post.title} className="block focus-visible:outline focus-visible:outline-4 focus-visible:outline-accent">
       <motion.article
-        className="relative aspect-cinema overflow-hidden bg-primary group cursor-pointer"
+        className="relative w-full min-w-0 aspect-cinema min-h-[240px] lg:min-h-[320px] overflow-hidden bg-primary group cursor-pointer"
         onHoverStart={() => setIsHovered(true)}
         onHoverEnd={() => setIsHovered(false)}
         whileHover={{ scale: 1.01 }}
@@ -40,7 +41,7 @@ export function HeroCard({ post }: HeroCardProps) {
         )}
 
         {/* 그라디언트 오버레이 */}
-        <div className="gradient-overlay" />
+        <div className="gradient-overlay bg-black/50" />
 
         {/* 블러 오버레이 (호버 시) */}
         <motion.div
@@ -51,24 +52,25 @@ export function HeroCard({ post }: HeroCardProps) {
         />
 
         {/* 상단 라벨 */}
-        <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
-          <span className="text-caption text-surface/80 uppercase tracking-widest">
+        <div className="absolute top-3 left-3 right-3 sm:top-6 sm:left-6 sm:right-6 flex items-center justify-between gap-2">
+          <span className="text-caption text-surface bg-black/70 px-2 py-1 uppercase tracking-widest">
             {post.type}
           </span>
-          <span className="text-caption text-surface/60">
+          <span className="text-caption text-surface bg-black/70 px-2 py-1 whitespace-nowrap">
             {formattedDate}
           </span>
         </div>
 
         {/* 콘텐츠 */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
+        <div className={`absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 ${hasPagination ? 'pb-16 sm:pb-16 lg:pb-20' : ''}`}>
           {/* 태그 */}
           {post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="flex gap-2 mb-3 min-w-0">
               {post.tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs px-2 py-1 bg-surface/10 backdrop-blur-sm text-surface/90"
+                  title={tag}
+                  className="min-w-0 max-w-[40%] truncate text-xs px-2 py-1 bg-black/70 text-surface"
                 >
                   {tag}
                 </span>
@@ -77,13 +79,13 @@ export function HeroCard({ post }: HeroCardProps) {
           )}
 
           {/* 제목 */}
-          <h2 className="font-serif text-display-sm lg:text-display text-surface mb-2 text-balance">
+          <h2 className="font-serif text-2xl sm:text-display-sm lg:text-display text-surface mb-2 text-balance [overflow-wrap:anywhere] line-clamp-2">
             {post.title}
           </h2>
 
           {/* Extendable 영역 */}
           <motion.div
-            className="overflow-hidden"
+            className="hidden lg:block overflow-hidden"
             initial={{ height: 0 }}
             animate={{ height: isHovered ? 'auto' : 0 }}
             transition={{ duration: 0.3 }}
@@ -122,4 +124,3 @@ export function HeroCard({ post }: HeroCardProps) {
     </Link>
   );
 }
-

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IPost extends Document {
@@ -83,7 +84,7 @@ postSchema.pre('validate', function (next) {
       .replace(/[^a-z0-9가-힣\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
-      .substring(0, 100) + '-' + Date.now();
+      .substring(0, 100) + '-' + randomUUID();
   }
   next();
 });

@@ -1,21 +1,41 @@
-import { useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import Masonry from 'react-masonry-css';
 import { postsApi, type Post } from '@/lib/api';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { GalleryCard } from '@/components/cards/GalleryCard';
+import { useSearchStore } from '@/store/searchStore';
 
 export function Gallery() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const page = Math.max(1, Number(searchParams.get('page')) || 1);
-  
-  const type = searchParams.get('type') as 'project' | 'essay' | null;
-  const query = searchParams.get('query') || undefined;
-  const sort = searchParams.get('sort') || 'createdAt';
-  const order = (searchParams.get('order') || 'desc') as 'asc' | 'desc';
+  const rawPage = Number(searchParams.get('page') || 1);
+  const page = Number.isSafeInteger(rawPage) && rawPage >= 1 && rawPage <= 100000 ? rawPage : 1;
+  const rawType = searchParams.get('type');
+  const type = rawType === 'project' || rawType === 'essay' ? rawType : undefined;
+  const query = searchParams.get('query')?.trim().slice(0, 200) || undefined;
+  const rawSort = searchParams.get('sort') || 'createdAt';
+  const sort = ['createdAt', 'updatedAt', 'title', 'featuredOrder'].includes(rawSort) ? rawSort : 'createdAt';
+  const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
+  const normalized = new URLSearchParams(searchParams);
+  if (page === 1) normalized.delete('page'); else normalized.set('page', String(page));
+  if (type) normalized.set('type', type); else normalized.delete('type');
+  if (query) normalized.set('query', query); else normalized.delete('query');
+  if (searchParams.has('sort')) normalized.set('sort', sort);
+  if (searchParams.has('order')) normalized.set('order', order);
+  const normalizedSearch = normalized.toString();
+  const currentSearch = searchParams.toString();
 
-  const { data, isLoading, error } = useQuery({
+  useEffect(() => {
+    if (currentSearch !== normalizedSearch) setSearchParams(normalizedSearch, { replace: true });
+  }, [currentSearch, normalizedSearch, setSearchParams]);
+
+  useEffect(() => {
+    useSearchStore.setState({ query: query || '', type: type || 'all', sort: sort === 'title' ? 'name' : 'date', order });
+  }, [query, type, sort, order]);
+
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['posts', { type, query, sort, order, page }],
     queryFn: () =>
       postsApi.getAll({
@@ -28,6 +48,15 @@ export function Gallery() {
   });
 
   const posts = data?.data || [];
+  const lastPage = Math.max(1, data?.pagination.totalPages || 1);
+  const beyondLastPage = !!data && page > lastPage;
+
+  useEffect(() => {
+    if (!beyondLastPage) return;
+    const next = new URLSearchParams(normalizedSearch);
+    if (lastPage === 1) next.delete('page'); else next.set('page', String(lastPage));
+    setSearchParams(next, { replace: true });
+  }, [beyondLastPage, lastPage, normalizedSearch, setSearchParams]);
 
   const breakpointColumns = {
     default: 3,
@@ -52,7 +81,7 @@ export function Gallery() {
         <h1 className="font-serif text-display-sm lg:text-display mb-4">{title}</h1>
         {query && (
           <p className="text-secondary">
-            &quot;{query}&quot; 검색 결과 ({data?.pagination.total || 0}건)
+            &quot;{query}&quot; 검색 결과{data ? ` (${data.pagination.total}건)` : ''}
           </p>
         )}
         {!query && (
@@ -67,7 +96,7 @@ export function Gallery() {
       </motion.header>
 
       {/* 로딩 */}
-      {isLoading && (
+      {(isLoading || beyondLastPage) && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i}>
@@ -80,19 +109,21 @@ export function Gallery() {
       {/* 에러 */}
       {error && (
         <div className="text-center py-20">
-          <p className="text-secondary">콘텐츠를 불러오는데 실패했습니다.</p>
+          <p role="alert" className="text-secondary">{error instanceof Error ? error.message : '콘텐츠를 불러오는데 실패했습니다.'}</p>
+          <button type="button" onClick={() => void refetch()} disabled={isFetching} className="btn-primary mt-4">다시 시도</button>
         </div>
       )}
 
       {/* 결과 없음 */}
-      {!isLoading && !error && posts.length === 0 && (
+      {!isLoading && !error && !beyondLastPage && posts.length === 0 && (
         <div className="text-center py-20">
-          <p className="text-secondary">아직 게시글이 없습니다.</p>
+          <p role="status" className="text-secondary">{query ? '검색 결과가 없습니다.' : type ? '이 분류에 공개된 게시글이 없습니다.' : '아직 공개된 게시글이 없습니다.'}</p>
+          {(query || type) && <Link to="/gallery" className="btn-ghost mt-4">전체 글 보기</Link>}
         </div>
       )}
 
       {/* Masonry 그리드 */}
-      {!isLoading && !error && posts.length > 0 && (
+      {!isLoading && !error && !beyondLastPage && posts.length > 0 && (
         <Masonry
           breakpointCols={breakpointColumns}
           className="flex -ml-6 w-auto"
@@ -111,7 +142,7 @@ export function Gallery() {
           ))}
         </Masonry>
       )}
-      {data && data.pagination.totalPages > 1 && <nav aria-label="갤러리 페이지" className="flex justify-center gap-6 mt-8">
+      {data && !error && !beyondLastPage && data.pagination.totalPages > 1 && <nav aria-label="갤러리 페이지" className="flex justify-center gap-6 mt-8">
         <button disabled={page <= 1} onClick={() => {const next = new URLSearchParams(searchParams); next.set('page', String(page - 1)); setSearchParams(next);}} className="disabled:opacity-30">이전</button>
         <span>{page} / {data.pagination.totalPages}</span>
         <button disabled={page >= data.pagination.totalPages} onClick={() => {const next = new URLSearchParams(searchParams); next.set('page', String(page + 1)); setSearchParams(next);}} className="disabled:opacity-30">다음</button>
@@ -119,4 +150,3 @@ export function Gallery() {
     </div>
   );
 }
-

@@ -33,7 +33,7 @@ export function Contact() {
               <h3 className="font-medium mb-1">Email</h3>
               <a
                 href={site.email ? 'mailto:' + site.email : undefined}
-                className="text-secondary hover:text-accent transition-colors"
+                className="text-secondary hover:text-accent-ink transition-colors"
               >
                 {site.email || '연락처를 준비하고 있습니다'}
               </a>
@@ -70,7 +70,7 @@ export function Contact() {
               <h3 className="font-medium mb-1">Phone</h3>
               <a
                 href={site.phone ? 'tel:' + site.phone : undefined}
-                className="text-secondary hover:text-accent transition-colors"
+                className="text-secondary hover:text-accent-ink transition-colors"
               >
                 {site.phone || '전화번호 미등록'}
               </a>

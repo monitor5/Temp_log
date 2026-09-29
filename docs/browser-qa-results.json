@@ -1,0 +1,138 @@
+{
+  "date": "2026-09-29",
+  "browser": "Chrome via Playwright 1.63.0",
+  "viewport_widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "passed": 29,
+  "failed": 0,
+  "skipped": 0,
+  "backend_regressions_passed": 17,
+  "scenarios": [
+    {
+      "name": "01 branding, public navigation and real empty states",
+      "status": "passed"
+    },
+    {
+      "name": "02 anonymous admin route and invalid login recover clearly",
+      "status": "passed"
+    },
+    {
+      "name": "03 editor validation and dirty navigation/back protection",
+      "status": "passed"
+    },
+    {
+      "name": "04 create draft through UI with thumbnail and Markdown image",
+      "status": "passed"
+    },
+    {
+      "name": "05 draft body, comments and admin listing remain private",
+      "status": "passed"
+    },
+    {
+      "name": "06 thumbnail removal persists and referenced media cannot be deleted",
+      "status": "passed"
+    },
+    {
+      "name": "07 PDF and actual WebM upload, malicious/oversize upload feedback",
+      "status": "passed"
+    },
+    {
+      "name": "08 save failure preserves unsaved input and recovers on retry",
+      "status": "passed"
+    },
+    {
+      "name": "09 publishing/pinning/unpublishing updates UI and reader visibility",
+      "status": "passed"
+    },
+    {
+      "name": "10 search URL synchronization, filtering, Escape and focus return",
+      "status": "passed"
+    },
+    {
+      "name": "11 gallery/admin pagination and invalid URL recovery",
+      "status": "passed"
+    },
+    {
+      "name": "12 not-found edit and transient read errors offer recovery",
+      "status": "passed"
+    },
+    {
+      "name": "13 guest comments validate, delete by Enter, reset errors and Escape",
+      "status": "passed"
+    },
+    {
+      "name": "14 comment read failure is not an empty state; moderation works",
+      "status": "passed"
+    },
+    {
+      "name": "15 browser security probes reject injection, malformed writes and unsafe embeds",
+      "status": "passed"
+    },
+    {
+      "name": "16 mobile navigation, long content, keyboard and contact states",
+      "status": "passed"
+    },
+    {
+      "name": "17 pending mutations cannot double submit and delete confirmation recovers",
+      "status": "passed"
+    },
+    {
+      "name": "18 logout clears protected content in another tab",
+      "status": "passed"
+    },
+    {
+      "name": "19 server password reset revokes session and focus recheck redirects",
+      "status": "passed"
+    },
+    {
+      "name": "20 late old-session 401 cannot cancel a newer successful login",
+      "status": "passed"
+    },
+    {
+      "name": "21 comment pagination reaches comments older than the first 100",
+      "status": "passed"
+    },
+    {
+      "name": "22 real database outage shows retry UI and recovers without data loss",
+      "status": "passed"
+    },
+    {
+      "name": "23 login throttling reports a real 429 in the UI",
+      "status": "passed"
+    },
+    {
+      "name": "24 320px/tablet layouts and keyboard-scrolling content remain usable",
+      "status": "passed"
+    },
+    {
+      "name": "25 background refetch cannot overwrite a dirty editor",
+      "status": "passed"
+    },
+    {
+      "name": "26 slow multiple uploads keep Save disabled and both files are inserted",
+      "status": "passed"
+    },
+    {
+      "name": "27 HTML-encoded and case-varied media references remain protected",
+      "status": "passed"
+    },
+    {
+      "name": "28 total upload quota is enforced by the server and errors remain recoverable",
+      "status": "passed"
+    },
+    {
+      "name": "29 allowed large Korean article saves through the real editor",
+      "status": "passed"
+    }
+  ],
+  "duration_ms": 67737,
+  "notes": [
+    "Real Chrome UI interactions plus browser-origin/API boundary checks",
+    "29 serial scenarios; no browser tests skipped",
+    "No production data or credentials used"
+  ]
+}

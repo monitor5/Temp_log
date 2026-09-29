@@ -1,4 +1,4 @@
-# Temp_log · 원본 Arch-Log 개선판
+# Temp-Log
 
 `monitor5/sspark_portpolio`의 **React 화면·관리자 편집기·Express API·MongoDB 모델을 가져와 문제를 수정**한 개인 블로그/포트폴리오다. 홈, 프로젝트/에세이 상세, 갤러리, 검색, 댓글, Markdown 편집과 파일 업로드를 유지한다. 다른 CMS는 설계 참고만 했으며 서비스로 실행하지 않는다.
 
@@ -40,7 +40,7 @@ make admin-reset  # 관리 권한이 있는 터미널에서 비밀번호 변경,
 | 연락처 | 예시 학교 주소·전화번호를 개인 설정으로 분리, 문의는 메일 앱으로 연결 |
 | 운영 | 비루트 Docker, 영구 볼륨, DB 권한 분리, readiness/liveness, 정상 종료 |
 
-프로필·연락처·소셜 링크는 `client/src/site.ts`에서 실제 공개할 값으로 채운다. 임의 연락처로 메일을 보내지 않도록 기본값은 비워 뒀다. 로고와 주요 화면 이름은 원본 Arch-Log를 유지했다. 기본 시드 콘텐츠와 공용 관리자 비밀번호는 제공하지 않는다.
+프로필·연락처·소셜 링크는 `client/src/site.ts`에서 실제 공개할 값으로 채운다. 임의 연락처로 메일을 보내지 않도록 기본값은 비워 뒀다. 원래 화면 구성을 유지하며 로고·페이지·관리자 화면의 서비스명은 Temp-Log로 통일했다. 기본 시드 콘텐츠와 공용 관리자 비밀번호는 제공하지 않는다.
 
 업로드한 파일은 `/uploads/...` URL을 알면 읽을 수 있다. **초안 본문 비공개와 파일 비공개는 별개**이며 이 앱은 비밀 문서 보관함이 아니다. PDF는 다운로드로 제공하고 SVG/HTML 파일 업로드는 차단한다.
 
@@ -87,3 +87,19 @@ unset COMPOSE_PROJECT_NAME APP_PORT PUBLIC_URL
 재시험은 이전 `artifacts/original-smoke.json`과 `.cookies`를 정리한 뒤 새 테스트 DB에서 진행한다. `create`는 이미 관리자가 있는 DB에 덮어쓰지 않는다. 실제 사용 DB에 테스트를 실행하지 않는다.
 
 [수정 근거](docs/AUDIT.md) · [검증 결과와 한계](docs/VALIDATION.md) · [라이선스](docs/LICENSE_REVIEW.md) · [보안 운영](SECURITY.md)
+
+
+## 브라우저 QA
+
+[브라우저 QA 결과와 개선 내역](docs/BROWSER_QA.md). 실제 Chromium으로 UI를 조작하며, 테스트 데이터·비밀번호는 별도 환경에만 만든다. 테스트에는 관리자 비밀번호 초기화, DB 중단/복구, 고의 로그인 제한 도달이 포함되므로 실사용 인스턴스를 대상으로 실행하지 않는다.
+
+```sh
+APP_PORT=8081 PUBLIC_URL=http://localhost:8081 docker compose -p temp-log-test-qa up --build --force-recreate -d --wait --wait-timeout 240
+npm run qa:prepare
+npx playwright install chromium
+npm run test:browser
+```
+
+macOS에 설치된 Chrome을 사용하려면 `QA_BROWSER_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:browser`로 실행한다. 재시험할 때는 QA 컨테이너를 재생성해 고의로 발생시킨 메모리 rate limit을 초기화한다. QA DB 볼륨을 지웠다면 `artifacts/qa-private.json`도 지운 후 새로 준비한다. 실사용 DB·업로드·관리자 계정은 건드리지 않는다.
+
+테스트의 네트워크/세션 trace는 저장하지 않는다. CI에는 안전한 결과 JSON과 QA 화면만 보관하며 `artifacts/qa-private.json`은 업로드하지 않는다.

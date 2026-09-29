@@ -17,3 +17,13 @@ test('media URLs reject active schemes and scheme-relative destinations', () => 
   assert.equal(mediaUrl.safeParse('/uploads/example.png').success, true);
   assert.equal(mediaUrl.safeParse('https://example.com/a.jpg').success, true);
 });
+
+test('reserved slugs and whitespace-only content cannot create broken posts', () => {
+  for (const slug of ['featured', 'abcdefabcdefabcdefabcdef']) {
+    assert.equal(postCreate.safeParse({title: 'Test', content: 'Body', slug}).success, false);
+    assert.equal(postUpdate.safeParse({slug}).success, false);
+  }
+  assert.equal(postCreate.safeParse({title: 'Test', content: ' \n\t '}).success, false);
+  assert.equal(postUpdate.safeParse({content: ' '}).success, false);
+  assert.equal(postCreate.parse({title: 'Test', content: '    code\n'}).content, '    code\n');
+});

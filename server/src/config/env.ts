@@ -13,8 +13,8 @@ const env = z.object({
   MAX_UPLOAD_TOTAL_MB: z.coerce.number().int().min(25).max(100000).default(1024),
 }).parse(process.env);
 const url = new URL(env.PUBLIC_URL);
-if (url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
-  throw new Error('PUBLIC_URL must be an origin without credentials, path, query or fragment');
+if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+  throw new Error('PUBLIC_URL must be an HTTP(S) origin without credentials, path, query or fragment');
 }
 if (env.NODE_ENV === 'production' && url.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
   throw new Error('Production PUBLIC_URL must use HTTPS except for localhost');

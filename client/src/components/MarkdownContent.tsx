@@ -18,6 +18,8 @@ function embedUrl(src?: string) {
 }
 export function MarkdownContent({children}: {children: string}) {
   return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, schema]]} components={{
+    pre: ({children: content}) => <pre tabIndex={0} aria-label="코드 블록">{content}</pre>,
+    table: ({children: content}) => <table tabIndex={0} aria-label="본문 표">{content}</table>,
     video: ({src, poster}) => <video src={src} poster={poster} controls preload="metadata" className="w-full my-8" />,
     iframe: ({src, title}) => { const safe = embedUrl(src); return safe ? <div className="aspect-video my-8"><iframe src={safe} title={title || '영상'} loading="lazy" sandbox="allow-scripts allow-same-origin allow-presentation" referrerPolicy="no-referrer" allowFullScreen className="w-full h-full" /></div> : null; },
     img: ({alt, src}) => <img src={src} alt={alt || ''} loading="lazy" className="w-full my-8" />,

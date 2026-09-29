@@ -45,6 +45,8 @@ export const getPosts = asyncHandler(async (req: Request, res: Response, _next: 
   // 정렬 옵션
   const sortOption: Record<string, 1 | -1> = {};
   sortOption[sort as string] = order === 'asc' ? 1 : -1;
+  // Stable tie-breaker keeps equally ranked posts from moving between pages.
+  sortOption._id = order === 'asc' ? 1 : -1;
 
   const [posts, total] = await Promise.all([
     Post.find(filter)

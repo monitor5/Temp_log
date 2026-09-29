@@ -110,6 +110,12 @@
 /* 마크다운 스타일 */
 .prose {
   @apply text-primary leading-relaxed;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.container-narrow :where(h1, h2, h3, h4, p) {
+  overflow-wrap: anywhere;
 }
 
 .prose h1 {
@@ -154,6 +160,8 @@
 
 .prose pre {
   @apply bg-primary text-surface p-4 overflow-x-auto my-6;
+  max-width: 100%;
+  overflow-wrap: normal;
 }
 
 .prose pre code {
@@ -165,11 +173,15 @@
 }
 
 .prose a {
-  @apply text-accent underline underline-offset-2 hover:text-primary transition-colors;
+  @apply text-accent-ink underline underline-offset-2 hover:text-primary transition-colors;
 }
 
 .prose table {
   @apply w-full my-6 border-collapse;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: normal;
 }
 
 .prose th, .prose td {
@@ -197,4 +209,3 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted;
 }
-

@@ -59,7 +59,7 @@ export function GalleryCard({ post }: GalleryCardProps) {
             <span className="text-caption text-muted">{formattedDate}</span>
           </div>
           
-          <h3 className="font-medium text-primary group-hover:text-accent transition-colors line-clamp-2">
+          <h3 className="font-medium text-primary group-hover:text-accent-ink transition-colors line-clamp-2">
             {post.title}
           </h3>
 

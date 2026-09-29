@@ -3,6 +3,9 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileTypeFromFile } from 'file-type';
 import sharp from 'sharp';
+import { z } from 'zod';
+import { Post } from '../models/Post.js';
+import { referencesUpload } from '../mediaReferences.js';
 import { config } from '../config/env.js';
 import { createError, asyncHandler } from '../middlewares/error.middleware.js';
 const types: Record<string, {extensions: string[]; mime: string; kind: string}> = {
@@ -16,7 +19,7 @@ const types: Record<string, {extensions: string[]; mime: string; kind: string}> 
   pdf: {extensions: ['.pdf'], mime: 'application/pdf', kind: 'file'},
 };
 const extension = (name: string) => path.extname(name).slice(1).toLowerCase().replace('jpeg', 'jpg');
-const validFilename = (name: string) => name === path.basename(name) && !name.startsWith('.') && !name.includes('\\') && !!types[extension(name)];
+const validFilename = (name: string) => Buffer.byteLength(name) <= 255 && !/[\u0000-\u001f\u007f-\u009f]/u.test(name) && name === path.basename(name) && !name.startsWith('.') && !name.includes('\\') && !!types[extension(name)];
 // Serialize the quota check + final file write for this single-writer app.
 let writes: Promise<unknown> = Promise.resolve();
 function locked<T>(operation: () => Promise<T>): Promise<T> {
@@ -48,8 +51,7 @@ export const uploadFile = asyncHandler(async (req, res) => {
   } finally { await fs.unlink(file.path).catch(() => undefined); }
 });
 export const getMediaLibrary = asyncHandler(async (req, res) => {
-  const page = Number(req.query.page || 1);
-  if (!Number.isInteger(page) || page < 1) throw createError('잘못된 페이지입니다', 400);
+  const {page} = z.object({page: z.coerce.number().int().min(1).max(100000).default(1)}).strict().parse(req.query);
   const names = await fs.readdir(config.UPLOAD_DIR).catch(() => [] as string[]);
   const data = [];
   for (const filename of names.filter(validFilename)) {
@@ -62,8 +64,21 @@ export const getMediaLibrary = asyncHandler(async (req, res) => {
 export const deleteFile = asyncHandler(async (req, res) => {
   const filename = String(req.params.filename);
   if (!validFilename(filename)) throw createError('잘못된 파일명입니다', 400);
+  // Include drafts. A cursor bounds memory without skipping encoded references
+  // through a raw-text database prefilter. Deletion is an infrequent admin action.
+  const posts = Post.find().select('thumbnail media content -_id').lean().cursor({batchSize: 20});
+  try {
+    for await (const post of posts) {
+      if ([post.thumbnail, ...(post.media || []), post.content].some(value => referencesUpload(value, filename))) {
+        throw createError('게시글에서 사용 중인 파일입니다. 글에서 첨부를 제거하고 저장한 뒤 삭제해주세요.', 409);
+      }
+    }
+  } finally { await posts.close(); }
   try { await fs.unlink(path.join(config.UPLOAD_DIR, filename)); }
-  catch { throw createError('파일을 찾을 수 없습니다', 404); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw createError('파일을 찾을 수 없습니다', 404);
+    throw error;
+  }
   res.json({success: true, message: '파일이 삭제되었습니다'});
 });
 export const serveUpload = asyncHandler(async (req, res) => {

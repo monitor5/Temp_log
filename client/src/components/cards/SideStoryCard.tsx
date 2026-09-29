@@ -66,7 +66,7 @@ export function SideStoryCard({ post, compact }: SideStoryCardProps) {
           {/* 텍스트 */}
           <div className="flex-1 min-w-0 py-1">
             <p className="text-caption text-muted mb-2">{formattedDate}</p>
-            <h4 className="font-medium text-primary line-clamp-2 group-hover:text-accent transition-colors">
+            <h4 className="font-medium text-primary line-clamp-2 group-hover:text-accent-ink transition-colors">
               {post.title}
             </h4>
             <span className="text-xs text-muted mt-2 inline-block uppercase tracking-wide">
