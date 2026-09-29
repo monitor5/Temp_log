@@ -1,0 +1,56 @@
+{
+  "checked_on": "2026-09-29",
+  "platform": "linux/arm64",
+  "scanner": "Trivy 0.74.0",
+  "scope": "Detected package/advisory pairs, not unique CVEs or proof of exploitability. Zero means no findings in this scan only.",
+  "results": [
+    {
+      "report": "ghost-trivy.json",
+      "report_sha256": "f2ac059e289450d0edbba08f26534c2c4c15ea576f71a1f32cda9e4d5e541ddb",
+      "artifact": "ghost:6.65.0-alpine",
+      "image_id": "sha256:f7ddcfbd90cb85f2906ef480c2f10eaf70a2bf45c5d52d287a48a9825b47881b",
+      "severity_counts": {
+        "MEDIUM": 27,
+        "HIGH": 41,
+        "LOW": 3,
+        "UNKNOWN": 1,
+        "CRITICAL": 1
+      },
+      "finding_entries": 73,
+      "packages": 524
+    },
+    {
+      "report": "mysql-trivy.json",
+      "report_sha256": "fff09c175ae72b77b1b208e34f3f20f57640e90f5774ae4bfb85bacd6a4378f3",
+      "artifact": "mysql:8.4",
+      "image_id": "sha256:0a2cc5e121fa5b68ec0965ea6d4f533d4c7f23b3216e788b1479857c377aae66",
+      "severity_counts": {
+        "HIGH": 37,
+        "MEDIUM": 27,
+        "LOW": 6,
+        "UNKNOWN": 1,
+        "CRITICAL": 1
+      },
+      "finding_entries": 72,
+      "packages": 141
+    },
+    {
+      "report": "temp-log-trivy.json",
+      "report_sha256": "38215aa4c59566daf34d6183fe3ea82ac5b7a8c41576ab6530996acddc6198f8",
+      "artifact": "temp-log:local",
+      "image_id": "sha256:d6f744e41b5088b29ff517e933dc7f2cd38aeb3b5adc00d9c2d11ec39c2ee49b",
+      "severity_counts": {},
+      "finding_entries": 0,
+      "packages": 26
+    },
+    {
+      "report": "temp-log-db-trivy.json",
+      "report_sha256": "15e1e23a87d8d245b8424cd83139b836d8e819320064df9a4e30897e4f86731e",
+      "artifact": "temp-log-db:local",
+      "image_id": "sha256:79a3cb0486bef3b1c64a96aaf7f896b85daf6bcf4a9bc6910e6266e5ffb4e32d",
+      "severity_counts": {},
+      "finding_entries": 0,
+      "packages": 116
+    }
+  ]
+}

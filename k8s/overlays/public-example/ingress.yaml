@@ -1,0 +1,23 @@
+# EXAMPLE ONLY: do not apply before creating the owner account and configuring
+# a real hostname, maintained ingress controller, TLS Secret and network access.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ghost
+spec:
+  ingressClassName: replace-with-your-ingress-class
+  tls:
+    - hosts:
+        - blog.example.com
+      secretName: temp-log-tls
+  rules:
+    - host: blog.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ghost
+                port:
+                  number: 2368

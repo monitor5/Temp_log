@@ -1,0 +1,167 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ghost-content
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghost
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: ghost
+  ports:
+    - name: http
+      port: 2368
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghost
+spec:
+  # Ghost has one writer and local content. Do not attach an HPA or scale out.
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ghost
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ghost
+        app.kubernetes.io/part-of: temp-log
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-mysql
+          image: temp-log:local
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - -e
+            - |
+              const net = require('net');
+              const deadline = Date.now() + 600000;
+              function check() {
+                if (Date.now() > deadline) process.exit(1);
+                const socket = net.createConnection(3306, 'mysql');
+                socket.setTimeout(3000);
+                socket.once('connect', () => { socket.destroy(); process.exit(0); });
+                socket.once('error', () => { socket.destroy(); setTimeout(check, 2000); });
+                socket.once('timeout', () => socket.destroy(new Error('connection timeout')));
+              }
+              console.log('Waiting for MySQL TCP on mysql:3306');
+              check();
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      containers:
+        - name: ghost
+          # Build the repository Dockerfile; set a registry digest in your overlay.
+          image: temp-log:local
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          envFrom:
+            - configMapRef:
+                name: ghost-config
+          env:
+            - name: database__connection__password
+              valueFrom:
+                secretKeyRef:
+                  name: temp-log-db
+                  key: mysql-password
+            - name: mail__options__host
+              valueFrom:
+                secretKeyRef:
+                  name: temp-log-smtp
+                  key: smtp-host
+            - name: mail__options__auth__user
+              valueFrom:
+                secretKeyRef:
+                  name: temp-log-smtp
+                  key: smtp-user
+            - name: mail__options__auth__pass
+              valueFrom:
+                secretKeyRef:
+                  name: temp-log-smtp
+                  key: smtp-password
+            - name: mail__from
+              valueFrom:
+                secretKeyRef:
+                  name: temp-log-smtp
+                  key: mail-from
+          ports:
+            - name: http
+              containerPort: 2368
+          startupProbe:
+            tcpSocket:
+              port: http
+            failureThreshold: 90
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+              httpHeaders:
+                - name: X-Forwarded-Proto
+                  value: https
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Keep a DB outage out of the liveness decision to avoid restart loops.
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1536Mi
+          volumeMounts:
+            - name: content
+              mountPath: /var/lib/ghost/content
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: content
+          persistentVolumeClaim:
+            claimName: ghost-content
+        - name: tmp
+          emptyDir:
+            sizeLimit: 512Mi

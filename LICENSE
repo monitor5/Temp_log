@@ -1,0 +1,10 @@
+Copyright (c) 2026 monitor5. All rights reserved.
+
+Original Temp_log configuration, documentation, and theme files are private and
+are not offered under an open-source license. No permission to redistribute
+these original files is granted by this notice.
+
+Third-party software retains its own license. In particular, this notice does
+not change or replace the MIT license of Ghost, the GPL license of MySQL, or
+licenses of software included in their container images. See
+third_party/ and docs/LICENSE_REVIEW.md.

@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+# Keep this digest aligned with the audited upstream MySQL 8.4 LTS image.
+FROM mysql:8.4.11@sha256:0744ee5ef89ce6ccfa13de3e579fe6b9e27f93dd70da9c06d2c908b1b193fb8d
+
+USER root
+RUN set -eux; \
+    microdnf --disablerepo='*' --enablerepo=ol9_baseos_latest --enablerepo=ol9_appstream \
+        --setopt=install_weak_deps=0 upgrade -y curl libcurl libxml2; \
+    microdnf --disablerepo='*' remove -y mysql-shell; \
+    rm /usr/local/bin/gosu; \
+    microdnf clean all; \
+    command -v mysqld; \
+    command -v mysql; \
+    command -v mysqldump; \
+    command -v mysqladmin; \
+    test ! -e /usr/bin/mysqlsh; \
+    test ! -e /usr/local/bin/gosu; \
+    mysqld --version
+
+# The upstream entrypoint needs gosu only when starting as root. Runtime storage
+# must already be writable by 999:999 (volume ownership / Kubernetes fsGroup).
+USER 999:999

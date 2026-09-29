@@ -1,0 +1,41 @@
+{{!< default}}
+
+{{#post}}
+<article class="article {{post_class}}">
+    <header class="article-header wrap">
+        <div class="article-kicker">
+            {{#primary_tag}}<a class="tag-link" href="{{url}}">{{name}}</a>{{else}}<span class="eyebrow">기록</span>{{/primary_tag}}
+            <span>{{reading_time minute="약 1분 읽기" minutes="약 %분 읽기"}}</span>
+        </div>
+        <h1>{{title}}</h1>
+        {{#if custom_excerpt}}<p class="article-summary">{{custom_excerpt}}</p>{{/if}}
+        <div class="article-byline">
+            <span>{{authors separator=", "}}</span>
+            <span aria-hidden="true">/</span>
+            <time datetime="{{date format="YYYY-MM-DD"}}">{{date format="YYYY.MM.DD"}}</time>
+        </div>
+    </header>
+    {{> "feature-image"}}
+    <div class="article-content gh-content">
+        {{content}}
+    </div>
+    <footer class="article-footer">
+        {{#if tags}}<div class="article-tags" aria-label="이 글의 주제">{{tags separator=" "}}</div>{{/if}}
+        <a class="text-link" href="{{@site.url}}"><span aria-hidden="true">←</span> 모든 기록</a>
+    </footer>
+</article>
+<nav class="adjacent-posts wrap" aria-label="다른 기록 읽기">
+    {{#prev_post}}
+    <a class="adjacent-post" href="{{url}}">
+        <span class="eyebrow">이전 기록 <span aria-hidden="true">↙</span></span>
+        <h2>{{title}}</h2>
+    </a>
+    {{/prev_post}}
+    {{#next_post}}
+    <a class="adjacent-post" href="{{url}}">
+        <span class="eyebrow">다음 기록 <span aria-hidden="true">↗</span></span>
+        <h2>{{title}}</h2>
+    </a>
+    {{/next_post}}
+</nav>
+{{/post}}

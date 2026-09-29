@@ -1,0 +1,22 @@
+{{!< default}}
+
+<div class="wrap">
+    {{#tag}}
+    <header class="archive-header">
+        <p class="eyebrow">기록의 갈래 / Topic</p>
+        <h1>{{name}}<span class="accent">.</span></h1>
+        {{#if description}}<p class="archive-description">{{description}}</p>{{/if}}
+        <a class="text-link" href="{{@site.url}}"><span aria-hidden="true">←</span> 모든 기록</a>
+    </header>
+    {{/tag}}
+    <section class="entries" aria-label="주제별 기록">
+        <div class="post-grid">
+            {{#foreach posts}}
+                {{> "post-card"}}
+            {{else}}
+                <p class="empty-state">이 주제의 기록을 준비하고 있습니다.</p>
+            {{/foreach}}
+        </div>
+        {{pagination}}
+    </section>
+</div>

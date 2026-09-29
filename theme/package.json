@@ -1,0 +1,26 @@
+{
+  "name": "temp-log",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An original, quiet editorial theme for monitor5's personal Ghost publication.",
+  "license": "UNLICENSED",
+  "keywords": ["ghost-theme", "personal-blog", "korean"],
+  "author": {
+    "name": "monitor5",
+    "email": "monitor5@users.noreply.github.com",
+    "url": "https://github.com/monitor5"
+  },
+  "engines": {
+    "ghost": ">=6.0.0"
+  },
+  "config": {
+    "posts_per_page": 9,
+    "card_assets": true,
+    "image_sizes": {
+      "small": { "width": 400 },
+      "medium": { "width": 800 },
+      "large": { "width": 1400 },
+      "full": { "width": 2200 }
+    }
+  }
+}
