@@ -75,3 +75,9 @@ function App() {
 
 export default App;
 
+
+
+// Intentional one-line build fault for the code-fix pipeline probe.
+const pipelineProbe = <main>
+</main>
+const pipelineParseFailure = (
