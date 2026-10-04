@@ -1,0 +1,72 @@
+name: temp-log-original
+x-logging: &logging
+  driver: local
+  options: {max-size: '10m', max-file: '3'}
+services:
+  app:
+    image: temp-log-original:local
+    build: .
+    user: '1000:1000'
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    ports: ['127.0.0.1:${APP_PORT:-8080}:4000']
+    environment:
+      NODE_ENV: production
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      SESSION_SECRET: ${SESSION_SECRET:?Run make init}
+      MONGO_URI: mongodb://archlog:${MONGO_APP_PASSWORD:?Run make init}@mongo:27017/archlog?authSource=archlog
+      UPLOAD_DIR: /data/uploads
+      MAX_FILE_SIZE_MB: '25'
+      MAX_UPLOAD_TOTAL_MB: '1024'
+    volumes: [uploads:/data/uploads]
+    tmpfs: ['/tmp:uid=1000,gid=1000,mode=1777,size=256m']
+    networks: [app, database]
+    logging: *logging
+    pids_limit: 256
+    mem_limit: 768m
+    cpus: 1.0
+    stop_grace_period: 30s
+    depends_on:
+      mongo: {condition: service_healthy}
+  mongo:
+    image: temp-log-mongo:local
+    build: {context: ., dockerfile: Dockerfile.mongo}
+    user: '999:999'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    command: [mongod, --bind_ip_all, --auth, --wiredTigerCacheSizeGB, '0.25']
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Run make init}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Run make init}
+      HOME: /tmp
+    volumes:
+      - mongo-data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
+      - ./docker/mongo-health.js:/opt/health.js:ro
+    tmpfs:
+      - /tmp:uid=999,gid=999,mode=1777,size=128m
+      - /data/configdb:uid=999,gid=999,mode=0750,size=16m
+    networks: [database]
+    logging: *logging
+    pids_limit: 512
+    mem_limit: 1g
+    cpus: 1.0
+    stop_grace_period: 60s
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --host, '127.0.0.1', /opt/health.js]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+volumes:
+  mongo-data:
+  uploads:
+networks:
+  app:
+  database: {internal: true}
