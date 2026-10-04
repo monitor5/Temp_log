@@ -1,0 +1,9 @@
+FROM mongo:8.0.32@sha256:4968f22d0c6c10ef29952f3e807f62872ba22b3312f25803564fbfc08255efc2
+# Use mongod + mongosh only. Backups copy a cleanly stopped data volume.
+# Root switching, the old YAML config helper, and separate import/export tools
+# are not needed by this deployment. Configure mongod using the provided args.
+USER root
+RUN apt-get purge -y mongodb-database-tools && \
+    rm -rf /opt/js-yaml /js-yaml.js /usr/local/bin/gosu /var/lib/apt/lists/* && \
+    command -v mongod && command -v mongosh && command -v tar
+USER 999:999
