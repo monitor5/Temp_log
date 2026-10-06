@@ -1,4 +1,4 @@
-FROM mongo:8.0.32@sha256:4968f22d0c6c10ef29952f3e807f62872ba22b3312f25803564fbfc08255efc2
+FROM mongo:9.0.2@sha256:bac22ea7710d774103dcad3ec8ac13cba1eb378f488e3ce8a6b3a1adf2ba9dcc
 # Use mongod + mongosh only. Backups copy a cleanly stopped data volume.
 # Root switching, the old YAML config helper, and separate import/export tools
 # are not needed by this deployment. Configure mongod using the provided args.
