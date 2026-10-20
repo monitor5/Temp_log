@@ -1,4 +1,4 @@
-FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build
+FROM node:26.12.0-alpine@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY client/package.json client/package.json
@@ -8,14 +8,14 @@ COPY client/ client/
 COPY server/ server/
 RUN npm run build
 
-FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime-deps
+FROM node:26.12.0-alpine@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5 AS runtime-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY client/package.json client/package.json
 COPY server/package.json server/package.json
 RUN npm ci --omit=dev --ignore-scripts --workspace=server
 
-FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+FROM node:26.12.0-alpine@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5
 LABEL org.opencontainers.image.title="Temp-Log" \
       org.opencontainers.image.source="https://github.com/monitor5/Temp_log"
 ENV NODE_ENV=production PORT=4000 CLIENT_DIR=/app/public UPLOAD_DIR=/data/uploads
